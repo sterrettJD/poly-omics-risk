@@ -672,6 +672,57 @@ rf.mod.INTERP <- caret::train(
 )
 varImp(rf.mod.INTERP)
 
+df_tmp <- varImp(rf.mod.INTERP)
+df_tmp2 <- as.data.frame(df_tmp$importance); colnames(df_tmp2) <- c("imp")
+df2 <- df_tmp2 %>%
+  tibble::rownames_to_column() %>%
+  dplyr::rename("variable" = rowname) %>%
+  dplyr::arrange(imp) %>%
+  dplyr::mutate(variable = forcats::fct_inorder(variable))
+plot_varimp <- ggplot2::ggplot(df2) +
+  geom_segment(
+    aes(
+      x = variable,
+      y = 0,
+      xend = variable,
+      yend = imp
+    ),
+    size = 1.5,
+    alpha = 0.7
+  ) +
+  geom_point(aes(x = variable, y = imp, col = variable),
+             size = 4,
+             show.legend = F) +
+  coord_flip() +
+  labs(y = "Importance", x = NULL, title = "") +
+  theme_bw() +
+  theme(legend.title = element_text(size = 14)) +
+  theme(
+    axis.text.x = element_text(
+      color = "black",
+      size = 13,
+      angle = 0,
+      hjust = .5,
+      vjust = .5
+    ),
+    axis.text.y = element_text(
+      color = "black",
+      size = length(unique(df2$variable))*1/6,
+      angle = 0
+    ),
+    axis.title.x = element_text(
+      color = "black",
+      size = 13,
+      angle = 0
+    ),
+    axis.title.y = element_text(
+      color = "black",
+      size = 13,
+      angle = 90
+    )
+  )
+plot_varimp
+
 #---RF Prediction step---#########################################################################################################################################################################
 
 x <- training_ready_sub_vsurf_result
@@ -721,6 +772,57 @@ rf.mod.PRED <- caret::train(
 )
 varImp(rf.mod.PRED)
 
+df_tmp <- varImp(rf.mod.PRED)
+df_tmp2 <- as.data.frame(df_tmp$importance); colnames(df_tmp2) <- c("imp")
+df2 <- df_tmp2 %>%
+  tibble::rownames_to_column() %>%
+  dplyr::rename("variable" = rowname) %>%
+  dplyr::arrange(imp) %>%
+  dplyr::mutate(variable = forcats::fct_inorder(variable))
+plot_varimp2 <- ggplot2::ggplot(df2) +
+  geom_segment(
+    aes(
+      x = variable,
+      y = 0,
+      xend = variable,
+      yend = imp
+    ),
+    size = 1.5,
+    alpha = 0.7
+  ) +
+  geom_point(aes(x = variable, y = imp, col = variable),
+             size = 4,
+             show.legend = F) +
+  coord_flip() +
+  labs(y = "Importance", x = NULL, title = "") +
+  theme_bw() +
+  theme(legend.title = element_text(size = 14)) +
+  theme(
+    axis.text.x = element_text(
+      color = "black",
+      size = 13,
+      angle = 0,
+      hjust = .5,
+      vjust = .5
+    ),
+    axis.text.y = element_text(
+      color = "black",
+      size = length(unique(df2$variable))*1/3,
+      angle = 0
+    ),
+    axis.title.x = element_text(
+      color = "black",
+      size = 13,
+      angle = 0
+    ),
+    axis.title.y = element_text(
+      color = "black",
+      size = 13,
+      angle = 90
+    )
+  )
+plot_varimp2
+
 #---simple glm---#########################################################################################################################################################################
 
 print(paste0("diagnosis ~ ", paste(VSURF_interp_keepers, sep = "", collapse = " + ")))
@@ -732,8 +834,8 @@ myglm <- glm(as.formula(paste0("diagnosis ~ ", paste(VSURF_interp_keepers, sep =
 
 # postPred_RF <- as.data.frame(predict(rf.mod.ALL, newdata = mergeytest))
 # postPred_RF <- as.data.frame(predict(rf.mod.THRESH, newdata = mergeytest))
-postPred_RF <- as.data.frame(predict(rf.mod.INTERP, newdata = mergeytest))
-# postPred_RF <- as.data.frame(predict(rf.mod.PRED, newdata = mergeytest))
+# postPred_RF <- as.data.frame(predict(rf.mod.INTERP, newdata = mergeytest))
+postPred_RF <- as.data.frame(predict(rf.mod.PRED, newdata = mergeytest))
 # postPred_RF <- as.data.frame(predict(myglm, newdata = mergeytest)); postPred_RF <- ifelse(postPred_RF[,1] > 0.25, "1", "0")
 
 comparePrediction <- cbind(as.character(mergeytest$diagnosis), postPred_RF)
