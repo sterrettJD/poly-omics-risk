@@ -13,6 +13,7 @@ list.files()
 #   install.packages("BiocManager")
 # BiocManager::install("biomformat")
 # install.packages("bestglm)
+# install.packages("tree")
 library(data.table)
 library(ggplot2)
 library(R.utils)
@@ -23,6 +24,7 @@ library(biomformat)
 library(compositions)
 library(bestglm)
 library(MASS)
+library(tree)
 `%ni%` <- Negate(`%in%`)
 
 ## metadata --###################################
@@ -526,6 +528,7 @@ glimpse(training_ready_sub_vsurf_result_tresh)
 # #---RF All Variables---#########################################################################################################################################################################
 
 x <- x
+x <- x %>% dplyr::select(-diagnosis) 
 y <- y
 
 if (length(data) > 2) {
@@ -577,6 +580,7 @@ varImp(rf.mod.ALL)
 # #---RF thresholding step ---#########################################################################################################################################################################
 
 x <- training_ready_sub_vsurf_result_tresh
+x <- x %>% dplyr::select(-diagnosis) 
 y <- y
 
 if (length(data) > 2) {
@@ -626,6 +630,7 @@ varImp(rf.mod.THRESH)
 #---RF Interpretation step---#########################################################################################################################################################################
 
 x <- training_ready_sub_vsurf_result_varImp
+x <- x %>% dplyr::select(-diagnosis) 
 y <- y
 
 if (length(data) > 2) {
@@ -726,6 +731,7 @@ plot_varimp
 #---RF Prediction step---#########################################################################################################################################################################
 
 x <- training_ready_sub_vsurf_result
+x <- x %>% dplyr::select(-diagnosis) 
 y <- y
 
 if (length(data) > 2) {
@@ -871,5 +877,9 @@ rtn <- rf.mod.INTERP #the interpretation set of selected parameters seems to do 
 # rtn <- myglm
 
 
+#---make a regression tree---#########################################################################################################################################################################
 
-
+require(tree)
+mytree <- tree(diagnosis ~ ., data = training_ready_sub_vsurf_result)
+plot(mytree)
+text(mytree, pretty = 0, cex = .8)
