@@ -2,6 +2,7 @@ library(tidyverse)
 library(data.table)
 library(vegan) #for distance matrix
 library(ape) # for pcoa
+library(ggplot2)
 `%ni%` <- Negate(`%in%`)
 
 setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metagenomics")
@@ -39,7 +40,10 @@ num_grouped_taxprof <- num_grouped_taxprof[,which(colSums(num_grouped_taxprof) >
 # make a bray curtis distance matrix
 metagenome_bc_distmat <- vegdist(t(num_grouped_taxprof), method="bray")
 
+# Do PCoA
 metagenome_pcoa <- pcoa(metagenome_bc_distmat)
+metagenome_pcoa_coords <- as.data.frame(metagenome_pcoa$vectors)
 
-
-
+#plot
+ggplot(data = metagenome_pcoa_coords, mapping = aes(x=Axis.1, y=Axis.2, )) +
+    geom_point()
