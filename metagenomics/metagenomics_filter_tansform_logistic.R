@@ -206,7 +206,7 @@ tail(cn)
 colnames(mergeytest) <- cn
 colnames(mergey) <- cn
 
-# run logistic regression for each feature
+## run logistic regression for each feature --###################################
 featureNames <- c()
 betas <- c()
 pvals <- c()
@@ -876,6 +876,18 @@ rtn <- rf.mod.INTERP #the interpretation set of selected parameters seems to do 
 # rtn <- rf.mod.ALL
 # rtn <- myglm
 
+#---Look at effect size directions---#########################################################################################################################################################################
+
+sub_tenResults <- subset(tenResults, featureNames %in% VSURF_pred_keepers)
+
+# make volcano plot
+bplot2 <- ggplot(aes(x = betas, y = -log10(pvals), col=mycolors, label=delabels), data = sub_tenResults) +
+  # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
+  geom_point() +
+  theme_minimal() +
+  geom_text() +
+  geom_vline(xintercept = 0)
+bplot2
 
 #---make a regression tree---#########################################################################################################################################################################
 
