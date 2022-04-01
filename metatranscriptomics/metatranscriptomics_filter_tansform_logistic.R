@@ -1,5 +1,5 @@
 
-setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
+setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
 
 list.files()
 
@@ -29,8 +29,6 @@ library(tree)
 
 ## metadata --###################################
 metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
-str(metadata)
-# metadata <- subset(metadata, data_type == "metagenomics")
 
 # make barplt by data type
 par(mar = c(9, 4, 2, 2) + 1)
@@ -67,7 +65,7 @@ idlist <- unique(i3)
 # idlistsep <- idlistsep$idlist
 
 # subset to jsut one datatype to explore diagnosis counts
-metadata <- subset(metadata, data_type == "metagenomics")
+metadata <- subset(metadata, data_type == "metatranscriptomics")
 # metadata <- subset(metadata, `External ID` %in% idlist)
 
 # fill missinig enries with NA and view the columns that are mostly non-NA
@@ -91,25 +89,44 @@ fname <- as.data.frame(fname)
 
 ecs_3 <- fname
 rownames(ecs_3) <- ecs_3$`Feature\\Sample`
-commentRow <- grep("# ", rownames(ecs_3), invert = F)
-mygrep <- grep("UNINTEGRATED|UNGROUPED|UNMAPPED", rownames(ecs_3), invert = F)
-mygrepni <- which(1:length(rownames(ecs_3)) %ni% mygrep)
+commentRow <- grep("# ", rownames(ecs_3), invert = F) # get the comment row in the data
+mygrep <- grep("UNINTEGRATED|UNGROUPED|UNMAPPED", rownames(ecs_3), invert = F) # get any unmapped data
+mygrepni <- which(1:length(rownames(ecs_3)) %ni% mygrep) # grep the lines that aren't unmapped
+
+# if we still have a comment row, get rid of it
 if(length(commentRow) > 0){
   mygrepni <- mygrepni[which(mygrepni != commentRow)]
 }
+
+# filter the ecs based on the mygrepni list
 grouped_ecs_3 <- ecs_3[mygrepni,]
+
+# Make sure the rownames of the filtered data are correct
 rownames(grouped_ecs_3) <- rownames(ecs_3)[mygrepni]
+
+# Make sure all are numeric
 num_grouped_ecs_3 <- mutate_all(grouped_ecs_3, function(x) as.numeric(as.character(x)))
+
+# make/rename a feature column
 num_grouped_ecs_3$`Feature\\Sample` <- rownames(num_grouped_ecs_3)
 names(num_grouped_ecs_3)[names(num_grouped_ecs_3) == 'Feature\\Sample'] <- 'feature'
+
+
 df <- num_grouped_ecs_3 %>% separate(feature,into=c("pathway","phylo"), convert=TRUE, sep="\\|")
 num_grouped_ecs_3$feature[1:10]
 df[1:10,c("pathway","phylo")]
-dfsub <- df[is.na(df$phylo),]
+
+# get only the pathways with no phylogeny. This is the sum of the expressed abundances of this pathway
+# this works because the data with phylogeny for each pathway sum up to the row for that pathway that doesn't contain phylogeny
+# The ones with phylogeny are nested within the rows without phylogeny, so we're just using no phylogeny to get only 
+# the path abundances
+dfsub <- df[is.na(df$phylo),] 
 dfsub$pathway <- NULL; dfsub$phylo <- NULL;
 View(dfsub)
 hist(rowSums(dfsub))
 hist(colSums(dfsub))
+
+# create a dataframe containing our path abundances in an array and then make a histogram of all values
 alldf <- as.data.frame(as.numeric(array(as.matrix(dfsub)))); colnames(alldf) <- c("alldf")
 hist(alldf$alldf[alldf$alldf > 0 & alldf$alldf <500])
 
@@ -119,10 +136,9 @@ num_grouped_df_3 <- dfsub
 pepsi <- 1E-06
 num_grouped_df_3 <- num_grouped_df_3 + pepsi
 
-## CLT transform --###################################
+## CLR transform --###################################
 # transform by center log transform across rows (features)
 clr_num_grouped_df_3 <- compositions::clr(num_grouped_df_3,)
-# clr_num_grouped_df_3 <- as.data.frame(apply(num_grouped_df_3, 1, clr))
 
 alldf_pretransform <- as.data.frame(as.numeric(array(as.matrix(num_grouped_df_3)))); colnames(alldf_pretransform) <- c("alldf_pretransform")
 hist(alldf_pretransform$alldf_pretransform)
@@ -152,12 +168,16 @@ transp_clr_num_grouped_df_3$`External ID` <- rownames(transp_clr_num_grouped_df_
 mergey <- merge(transp_clr_num_grouped_df_3, metadata1, by = "External ID")
 dim(transp_clr_num_grouped_df_3)
 dim(mergey)
+
 # make validation dataset that isn't used for training (the ids that are in the polyomic list)
+# This validation dataset includes samples that have ALL omics of interest
 mergeytest <- mergey[which(as.character(mergey$`External ID`) %in% as.character(idlist)),]
 dim(mergeytest)
+
 # make training dataset (the ids that are NOT in the polyomic list)
 mergey <- subset(mergey, `External ID` %ni% idlist)
 dim(mergey)
+
 # make the ids the rownames for each dataframe, and then remove that column
 rownames(mergeytest) <- mergeytest$`External ID`
 mergeytest$`External ID` <- NULL
@@ -167,6 +187,7 @@ mergey$`External ID` <- NULL
 # remove any columns that have no/little variation between samples...
 mergeytest_colsd <- apply(mergeytest, 2, sd, na.rm=T)
 mergey_colsd <- apply(mergey, 2, sd, na.rm=T)
+
 # qthresh <- quantile(colsd, 0.05, na.rm=T)
 hist(as.numeric(mergeytest_colsd))
 hist(as.numeric(mergey_colsd))
@@ -176,15 +197,6 @@ length(mergey_colsd)
 mergeytest <- mergeytest[,which(names(mergeytest) %in% toKeep)]
 mergey <- mergey[,which(names(mergey) %in% toKeep)]
 
-# rename the column names with just the species
-# cn <- as.data.frame(colnames(mergey)); colnames(cn) <- c("cn")
-# cn <- cn %>% separate(cn,into=c("junk","species"),convert=TRUE,sep="\\|s__")
-# cn <- cn$species
-# cn[length(cn)] <- "diagnosis"
-# head(cn)
-# tail(cn)
-# colnames(mergeytest) <- cn
-# colnames(mergey) <- cn
 
 head(colnames(mergeytest))
 head(colnames(mergey))
@@ -220,6 +232,7 @@ for(i in 1:(ncol(mergey)-1)){
 bonfsigthresh <- 0.05
 
 # make dataframe
+# This is called TenResults, but it's really all results :)
 tenResults <- as.data.frame(cbind(featureNames,betas,pvals))
 tenResults$featureNames <- as.character(tenResults$featureNames)
 tenResults$betas <- as.numeric(tenResults$betas)
@@ -246,14 +259,20 @@ bplot <- ggplot(aes(x = betas, y = -log10(pvals), col=mycolors, label=delabels),
   geom_text()
 bplot
 
+
+
 # extract the features that were significant and run a glm on the full model
 sigFeatures <- tenResults$featureNames[tenResults$mycolors == "sig"]
 df_bestglm <- mergey[,c(sigFeatures,"diagnosis")]
 mymod <- glm(as.formula(paste0("diagnosis ~ .")), data = df_bestglm, family = "binomial")
 mymodsum <- summary(mymod)
+mymodsum
+
 # prediction on reserved validation samples
 pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(mymod, mergeytest))); colnames(pred_df) <- c("actual", "predicted")
 pred_df$actual <- as.factor(pred_df$actual)
+
+
 # make a violin plot of the prediction
 ggplot(data = pred_df, aes(x = actual, y = predicted))+
   scale_fill_viridis_d( option = "D")+
