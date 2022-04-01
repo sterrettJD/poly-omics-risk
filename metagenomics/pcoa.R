@@ -98,3 +98,11 @@ diag.adonis.results <- adonis2(formula = metagenome_bc_distmat ~ diagnosis,
 
 
 diag.adonis.results # SIGNIFICANT
+
+
+# Dispoersion test
+dispersion<-betadisper(metagenome_bc_distmat, group=metagenome_pcoa_n_metadata$diagnosis)
+permutest(dispersion)
+
+plot(dispersion)
+
