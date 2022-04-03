@@ -100,29 +100,26 @@ print("data glimpse:")
 str(df_3[1:5,1:4])
 rownames(df_3) <- df_3$`Virus`
 df_3$`Virus` <- NULL
-View(as.data.frame(rownames(df_3)))
+#View(as.data.frame(rownames(df_3)))
 # separate dataframe out by rows which were annotated vs rows which weren't
 commentRow <- grep("# ", rownames(df_3), invert = F)
 mygrep <- grep("UNKNOWN", rownames(df_3), invert = F)
-grep_species <- grep("\\|s__", rownames(df_3), invert = F)
+grep_species <- grep("species=", rownames(df_3), invert = F)
 mygrepni <- which(1:length(rownames(df_3)) %ni% mygrep)
 if(length(commentRow) > 0){
   mygrepni <- mygrepni[which(mygrepni != commentRow)]
 }
 
 
-#######NEED TO FIX######
-## Preprocessing, make data compositional for species --###################################
-# grouped_df_3 <- df_3[mygrepni,]
-# rownames(grouped_df_3) <- rownames(df_3)[mygrepni]
-# grouped_df_3 <- df_3[grep_species,]
-# rownames(grouped_df_3) <- rownames(df_3)[grep_species]
-# num_grouped_df_3 <- mutate_all(grouped_df_3, function(x) as.numeric(as.character(x)))
-# View(num_grouped_df_3)
-# 
-# look <- as.data.frame(rownames(num_grouped_df_3)); colnames(look) <- c("look")
-# looksep <- look %>% separate(look,into=c("kingdom","phylum","class","order","family","genus","species"),convert=TRUE,sep="\\|")
 
+# Preprocessing, make data compositional for species --###################################
+grouped_df_3 <- df_3[mygrepni,]
+rownames(grouped_df_3) <- rownames(df_3)[mygrepni]
+grouped_df_3 <- df_3[grep_species,]
+rownames(grouped_df_3) <- rownames(df_3)[grep_species]
+num_grouped_df_3 <- mutate_all(grouped_df_3, function(x) as.numeric(as.character(x)))
+#View(num_grouped_df_3)
+#View(as.data.frame(rownames(num_grouped_df_3)))
 
 
 # is it compositional?
