@@ -159,3 +159,165 @@ dim(metadata1)
 length(intersecty)
 
 
+
+# transpose transformed data
+transp_clr_num_grouped_df_3 <- as.data.frame(t(clr_num_grouped_df_3))
+transp_clr_num_grouped_df_3$`External ID` <- rownames(transp_clr_num_grouped_df_3)
+
+## Merge with metadata --###################################
+# merge with diagnosis
+mergey <- merge(transp_clr_num_grouped_df_3, metadata1, by = "External ID")
+dim(transp_clr_num_grouped_df_3)
+dim(mergey)
+# make validation dataset that isn't used for training (the ids that are in the polyomic list)
+mergeytest <- mergey[which(as.character(mergey$`External ID`) %in% as.character(idlist)),]
+dim(mergeytest)
+# make training dataset (the ids that are NOT in the polyomic list)
+mergey <- subset(mergey, `External ID` %ni% idlist)
+dim(mergey)
+# make the ids the rownames for each dataframe, and then remove that column
+rownames(mergeytest) <- mergeytest$`External ID`
+mergeytest$`External ID` <- NULL
+rownames(mergey) <- mergey$`External ID`
+mergey$`External ID` <- NULL
+
+
+# remove any columns that have no/little variation between samples...
+mergeytest_colsd <- apply(mergeytest, 2, sd, na.rm=T)
+mergey_colsd <- apply(mergey, 2, sd, na.rm=T)
+# qthresh <- quantile(colsd, 0.05, na.rm=T)
+hist(as.numeric(mergeytest_colsd))
+hist(as.numeric(mergey_colsd))
+toKeep <- intersect(c(names(mergeytest_colsd)[which(mergeytest_colsd > 0)]), c(names(mergey_colsd)[which(mergey_colsd > 0)]))
+length(toKeep)
+length(mergey_colsd)
+mergeytest <- mergeytest[,which(names(mergeytest) %in% toKeep)]
+mergey <- mergey[,which(names(mergey) %in% toKeep)]
+
+# rename the column names with just the species
+cn <- as.data.frame(colnames(mergey)); colnames(cn) <- c("cn")
+cn <- cn %>% separate(cn,into=c("junk","species"),convert=TRUE,sep="species=")
+cn <- cn$species
+cn[length(cn)] <- "diagnosis"
+head(cn)
+tail(cn)
+colnames(mergeytest) <- cn
+colnames(mergey) <- cn
+
+
+
+## run logistic regression for each feature --###################################
+featureNames <- c()
+betas <- c()
+pvals <- c()
+for(i in 1:(ncol(mergey)-1)){
+  # for(i in 1:1){
+  # randName <- names(mergey)[sample(1:length(names(mergey)),1)]
+  randName <- names(mergey)[i]
+  mergeysub <- mergey[,c(randName, "diagnosis")]
+  colnames(mergeysub) <- c(randName,"diagnosis")
+  mymod <- glm(as.formula(paste0("diagnosis ~ `",randName,"`")), data = mergeysub, family = "binomial")
+  mymodsum <- summary(mymod)
+  featureNames <- c(featureNames, randName)
+  betas <- c(betas, mymodsum$coefficients[2,1])
+  pvals <- c(pvals, mymodsum$coefficients[2,4])
+  # validate on testing set
+  # if(mymodsum$coefficients[2,4] < 0.05){
+  #   print(randName)
+  #   print(cor(mergeytest$diagnosis, predict(mymod, mergeytest)))
+  # }
+  # Sys.sleep(1)
+  # summary(mymod)
+  # print(randName)
+  # print(mymodsum$aic)
+}
+
+
+
+
+# multiple test p value for significance (bonferoni)
+bonfsigthresh <- 0.05/(ncol(mergey)-1)
+# make dataframe
+tenResults <- as.data.frame(cbind(featureNames,betas,pvals))
+tenResults$featureNames <- as.character(tenResults$featureNames)
+tenResults$betas <- as.numeric(tenResults$betas)
+tenResults$pvals <- as.numeric(tenResults$pvals)
+
+
+# column for plot colors
+tenResults$mycolors <- NA
+tenResults$mycolors[tenResults$pvals < bonfsigthresh] <- "sig"
+tenResults$mycolors[tenResults$pvals >= bonfsigthresh] <- "notsig"
+tenResults$mycolors <- as.factor(tenResults$mycolors)
+
+
+# column for plot labels
+tenResults$delabels <- NA
+tenResults$delabels[tenResults$pvals < bonfsigthresh] <- tenResults$featureNames[tenResults$pvals < bonfsigthresh]
+tenResults$delabels[tenResults$pvals >= bonfsigthresh] <- NA
+tenResults$delabels <- as.character(tenResults$delabels)
+
+# make volcano plot
+bplot <- ggplot(aes(x = betas, y = -log10(pvals), col=mycolors, label=delabels), data = tenResults) +
+  # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
+  geom_point() +
+  theme_minimal() +
+  geom_text()
+bplot
+
+
+
+# extract the features that were significant and run a glm on the full model
+sigFeatures <- tenResults$featureNames[tenResults$mycolors == "sig"]
+df_bestglm <- mergey[,c(sigFeatures,"diagnosis")]
+mymod <- glm(as.formula(paste0("diagnosis ~ .")), data = df_bestglm, family = "binomial")
+mymodsum <- summary(mymod)
+# prediction on reserved validation samples
+pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(mymod, mergeytest))); colnames(pred_df) <- c("actual", "predicted")
+pred_df$actual <- as.factor(pred_df$actual)
+# make a violin plot of the prediction
+ggplot(data = pred_df, aes(x = actual, y = predicted))+
+  scale_fill_viridis_d( option = "D")+
+  theme_dark()+
+  geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
+  geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
+  theme(plot.title = element_text(hjust = 0.5))+
+  # theme(axis.title.x = element_text(size=14))+
+  theme(axis.text.x = element_text(colour = "black"))+
+  theme(axis.text.y = element_text(colour = "black"))+
+  theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
+  theme(panel.grid.major.x = element_blank())+
+  theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
+  # labs(title = addToTitle)+
+  ylab("Predicted Diagnosis")+
+  xlab("Actual Diagnosis")
+
+
+# bestglm
+# function begins with a data frame containing explanatory variables and response variables. 
+# The response variable should be in the last column. 
+# Varieties of goodness-of-fit criteria can be specified in the IC argument.
+# bestglm can only handle 15 variables.
+subfeats <- sample(names(df_bestglm), 14)
+subfeats <- subfeats[which(subfeats != "diagnosis")]; subfeats <- c(subfeats, "diagnosis")
+bglm <- bestglm::bestglm(df_bestglm[,subfeats], family = binomial, IC = "BIC")
+# prediction on reserved validation samples
+pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(bglm$BestModel, mergeytest))); colnames(pred_df) <- c("actual", "predicted")
+pred_df$actual <- as.factor(pred_df$actual)
+# make a violin plot of the prediction
+ggplot(data = pred_df, aes(x = actual, y = predicted))+
+  scale_fill_viridis_d( option = "D")+
+  theme_dark()+
+  geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
+  geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
+  theme(plot.title = element_text(hjust = 0.5))+
+  # theme(axis.title.x = element_text(size=14))+
+  theme(axis.text.x = element_text(colour = "black"))+
+  theme(axis.text.y = element_text(colour = "black"))+
+  theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
+  theme(panel.grid.major.x = element_blank())+
+  theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
+  # labs(title = addToTitle)+
+  ylab("Predicted Diagnosis")+
+  xlab("Actual Diagnosis")
+
