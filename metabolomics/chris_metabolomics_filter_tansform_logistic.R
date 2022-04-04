@@ -222,8 +222,8 @@ bonfsigthresh <- 0.05
 # make dataframe
 tenResults <- as.data.frame(cbind(featureNames,betas,pvals))
 tenResults$featureNames <- as.character(tenResults$featureNames)
-tenResults$betas <- as.numeric(tenResults$betas)
-tenResults$pvals <- as.numeric(tenResults$pvals)
+tenResults$betas <- as.numeric(as.character(tenResults$betas))
+tenResults$pvals <- as.numeric(as.character(tenResults$pvals))
 # tenResults <- tenResults %>% separate(featureNames,into=c("kingdom","phylum","class","order","family","genus","species"),convert=TRUE,sep="\\|")
 
 # column for plot colors
@@ -248,6 +248,7 @@ bplot
 
 # extract the features that were significant and run a glm on the full model
 sigFeatures <- tenResults$featureNames[tenResults$mycolors == "sig"]
+# sigFeatures <- tenResults$featureNames
 df_bestglm <- mergey[,c(sigFeatures,"diagnosis")]
 mymod <- glm(as.formula(paste0("diagnosis ~ .")), data = df_bestglm, family = "binomial")
 mymodsum <- summary(mymod)
