@@ -82,7 +82,7 @@ metadata1$diagnosis[metadata1$diagnosis == "CD"] <- 1
 metadata1$diagnosis[metadata1$diagnosis == "nonIBD"] <- 0
 metadata1$diagnosis <- as.numeric(metadata1$diagnosis)
 
-## Metagenomes taxonomic_profiles_3 --###################################
+## Metabolomics HMP2_metabolomics --###################################
 # fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/WGS/1818/taxonomic_profiles_3.tsv.gz", header=T)
 fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metabolites/1723/HMP2_metabolomics.csv.gz", header=T)
 # fname <- fread("pathabundances_3.tsv.gz", header=T)
