@@ -1,4 +1,6 @@
-setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
+#setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
+setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
+
 
 list.files()
 
@@ -89,7 +91,7 @@ metadata1$diagnosis <- as.numeric(metadata1$diagnosis)
 
 #VirMap
 fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/Viromics/1732/virome_virmap_analysis.tsv.gz", header=T)
-fname <- fread("virome_virmap_analysis.tsv.gz", header=T)
+#fname <- fread("virome_virmap_analysis.tsv.gz", header=T)
 fname <- as.data.frame(fname)
 
 df_3 <- fname
@@ -240,8 +242,8 @@ bonfsigthresh <- 0.05/(ncol(mergey)-1)
 # make dataframe
 tenResults <- as.data.frame(cbind(featureNames,betas,pvals))
 tenResults$featureNames <- as.character(tenResults$featureNames)
-tenResults$betas <- as.numeric(tenResults$betas)
-tenResults$pvals <- as.numeric(tenResults$pvals)
+tenResults$betas <- as.numeric(as.character(tenResults$betas))
+tenResults$pvals <- as.numeric(as.character(tenResults$pvals))
 
 
 # column for plot colors
@@ -259,6 +261,30 @@ tenResults$delabels <- as.character(tenResults$delabels)
 
 # make volcano plot
 bplot <- ggplot(aes(x = betas, y = -log10(pvals), col=mycolors, label=delabels), data = tenResults) +
+  # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
+  geom_point() +
+  theme_minimal() +
+  geom_text()
+bplot
+
+
+
+# NO BONFERONNI
+# column for plot colors
+tenResults$significant <- NA
+tenResults$significant[tenResults$pvals < 0.05] <- "sig"
+tenResults$significant[tenResults$pvals >= 0.05] <- "notsig"
+tenResults$significant <- as.factor(tenResults$significant)
+
+
+# column for plot labels
+tenResults$labels <- NA
+tenResults$labels[tenResults$pvals < 0.05] <- tenResults$featureNames[tenResults$pvals < 0.05]
+tenResults$labels[tenResults$pvals >= 0.05] <- NA
+tenResults$labels <- as.character(tenResults$labels)
+
+# make volcano plot
+bplot <- ggplot(aes(x = betas, y = -log10(pvals), col=significant, label=labels), data = tenResults) +
   # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
   geom_point() +
   theme_minimal() +
