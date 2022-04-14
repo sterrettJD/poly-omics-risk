@@ -1,6 +1,7 @@
 
-setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
+#setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
 
+setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores")
 list.files()
 
 # install.packages("data.table")
@@ -31,6 +32,108 @@ library(tree)
 metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
 str(metadata)
 # metadata <- subset(metadata, data_type == "metagenomics")
+
+for(col in colnames(metadata)){
+  if("ABX" %in% col){
+    print(col)
+  }
+}
+
+dims <- c()
+
+mtg <- c()
+mtx <- c()
+mtb <- c()
+vir <- c()
+
+for(par in unique(metadata$`Participant ID`)){
+  parRows <- nrow(metadata[metadata$`Participant ID`==par])
+  print(nrow(metadata[metadata$`Participant ID`==par]))
+  dims <- c(dims,parRows)
+}
+mean(dims)
+
+
+grouped_meta <- group_by(metadata, col=`Participant ID`, col=data_type)
+
+counts_df <- metadata %>% count(as.character(diagnosis)=="nonIBD", `Participant ID`, data_type) 
+
+colnames(counts_df) <- c("nonIBD", "Participant ID", "data_type", "n")
+
+sum(counts_df$n) == nrow(metadata)
+
+counts_df <- subset(counts_df, 
+                            data_type %in% c("metabolomics", 
+                                             "metagenomics", 
+                                             "metatranscriptomics", 
+                                             "viromics"))
+
+par_with_all_omics <- c()
+par_without_all_omics <- c()
+for(par in unique(counts_df$`Participant ID`)){
+  participant_df <-subset(counts_df, `Participant ID` == par)
+  nonibd <- participant_df$nonIBD[1]
+  if(is.na(nonibd)){
+    print(paste0("diagnosis empty for ", par))
+  }else if(nonibd==FALSE){
+    diagnosis <- "IBD"
+  }else{
+    diagnosis <- "nonIBD"
+  }
+  
+  
+  if(nrow(participant_df)!=4){
+    print("WHAT A LOSER!")
+    nsamples <- sum(participant_df$n)
+    nomics <- sum(participant_df$n>0) 
+    print(paste0(diagnosis, " sample ", par, " has ", nsamples, " samples over ", nomics, " omics layers" ))
+    par_without_all_omics <- c(par_without_all_omics, par)
+  }else{
+    nsamples <- sum(participant_df$n)
+    nomics <- sum(participant_df$n>0) 
+    print(paste0(diagnosis, " sample ", par, " has ", nsamples, " samples over ", nomics, " omics layers" ))
+    par_with_all_omics <- c(par_with_all_omics, par)
+  
+    
+  }
+}
+
+length(par_with_all_omics)
+length(par_without_all_omics)
+length(unique(counts_df$`Participant ID`)) == (length(par_with_all_omics) +length(par_without_all_omics))
+
+# only 1 participant doesn't have any of the 4
+# 26 don't have 4 omics
+# 104 have all 4 omics
+
+counts_df[counts_df$`Participant ID` %in% length(par_without_all_omics)]
+
+# sample 30 participants with all omics layers
+sampled <- par_with_all_omics[sample(1:length(par_with_all_omics), 30)]
+
+
+# grab those from the dataframe
+sampled_df <- metadata[metadata$`Participant ID` %in% sampled]
+sampled_df %<>% 
+  count(as.character(diagnosis)=="nonIBD", `Participant ID`, data_type) %>%
+  subset(data_type %in% c("metabolomics", 
+                          "metagenomics", 
+                          "metatranscriptomics", 
+                          "viromics"))
+
+summary(sampled_df)
+
+total_samples_per_participant <- c()
+for(par in unique(sampled_df$`Participant ID`)){
+  participant_df <-subset(metadata, `Participant ID` == par)
+  print(paste0(par, " has ", nrow(participant_df), " total samples"))
+  total_samples_per_participant <- c(total_samples_per_participant, nrow(participant_df))
+}
+
+summary(total_samples_per_participant)
+
+dim(metadata[metadata$`Participant ID` %in% sampled])
+dim(metadata)
 
 # make barplt by data type
 par(mar = c(9, 4, 2, 2) + 1)
@@ -67,6 +170,18 @@ idlist <- unique(i3)
 # idlistsep <- idlistsep$idlist
 
 # subset to jsut one datatype to explore diagnosis counts
+
+samples_with_all_omics <- metadata[which(metadata$`External ID` %in% idlist),]
+
+samples_with_all_omics$ibd <- samples_with_all_omics$diagnosis!="nonIBD"
+
+samples_with_all_omics %>% 
+  count(ibd,`Participant ID`) %>% 
+  group_by(ibd) %>%
+  arrange(desc(n), by_group=ibd)
+
+samples_with_all_omics[sample(1:nrow(samples_with_all_omics), 30),] %>% count(ibd,`Participant ID`)
+
 metadata <- subset(metadata, data_type == "metagenomics")
 # metadata <- subset(metadata, `External ID` %in% idlist)
 
