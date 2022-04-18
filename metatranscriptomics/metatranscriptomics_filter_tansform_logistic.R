@@ -190,6 +190,15 @@ dim(mergeytest)
 mergey <- subset(mergey, `External ID` %in% train_id_list)
 dim(mergey)
 
+# combine mergeys with the metadata for model
+mergey <- merge(mergey, 
+                subset(training_metadata, data_type=="metatranscriptomics"), 
+                by="External ID")
+mergeytest <- merge(mergeytest, 
+                subset(testing_metadata, data_type=="metatranscriptomics"), 
+                by="External ID")
+
+
 # make the ids the rownames for each dataframe, and then remove that column
 rownames(mergeytest) <- mergeytest$`External ID`
 mergeytest$`External ID` <- NULL
@@ -223,7 +232,7 @@ for(i in 1:(ncol(mergey)-1)){
   randName <- names(mergey)[i]
   mergeysub <- mergey[,c(randName, "diagnosis")]
   colnames(mergeysub) <- c(randName,"diagnosis")
-  mymod <- glm(as.formula(paste0("diagnosis ~ `",randName,"`")), data = mergeysub, family = "binomial")
+  mymod <- glm(as.formula(paste0("diagnosis ~ `", randName,"` + consent_age + sex + race + (1|`Participant ID`) + (1|`site_name`)")), data = mergeysub, family = "binomial")
   mymodsum <- summary(mymod)
   featureNames <- c(featureNames, randName)
   betas <- c(betas, mymodsum$coefficients[2,1])
