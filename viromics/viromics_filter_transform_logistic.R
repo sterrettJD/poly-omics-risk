@@ -1,21 +1,21 @@
-#setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
-setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
+setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
+#setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
 
 
 list.files()
 
 # install.packages("data.table")
- # install.packages("ggplot2")
- # install.packages("R.utils")
- # install.packages("tidyverse")
- # install.packages("UpSetR")
- # install.packages("cowplot")
- # if (!require("BiocManager", quietly = TRUE))
- #   install.packages("BiocManager")
- # BiocManager::install("biomformat")
- # install.packages("bestglm")
- # install.packages("tree")
- # install.packages("compositions")
+# install.packages("ggplot2")
+# install.packages("R.utils")
+# install.packages("tidyverse")
+# install.packages("UpSetR")
+# install.packages("cowplot")
+# if (!require("BiocManager", quietly = TRUE))
+#   install.packages("BiocManager")
+# BiocManager::install("biomformat")
+# install.packages("bestglm")
+# install.packages("tree")
+# install.packages("compositions")
 library(data.table)
 library(ggplot2)
 library(R.utils)
@@ -76,12 +76,17 @@ metadata[metadata==""] <- NA
 isna <- sapply(metadata, function(x) sum(is.na(x)))
 isna[isna < 100]
 summary(metadata$diagnosis)
-metadata1 <- as.data.frame(metadata[,c("External ID","diagnosis")])
+metadata1 <- as.data.frame(metadata[,c("External ID","diagnosis","Participant ID","site_name","consent_age","sex")])
 metadata1$diagnosis <- as.character(metadata1$diagnosis)
 metadata1$diagnosis[metadata1$diagnosis == "UC"] <- 1
 metadata1$diagnosis[metadata1$diagnosis == "CD"] <- 1
 metadata1$diagnosis[metadata1$diagnosis == "nonIBD"] <- 0
 metadata1$diagnosis <- as.numeric(metadata1$diagnosis)
+metadata1$'External ID' <- as.character(metadata1$'External ID')
+metadata1$'Participant ID' <- as.character(metadata1$'Participant ID')
+metadata1$sex <- as.factor(metadata1$sex)
+metadata1$site_name <- as.factor(metadata1$site_name)
+metadata1$consent_age <- as.numeric(metadata1$consent_age)
 
 ## Viromics taxonomic_profiles --###################################
 # #MetaPhlAn2
@@ -167,21 +172,63 @@ transp_clr_num_grouped_df_3 <- as.data.frame(t(clr_num_grouped_df_3))
 transp_clr_num_grouped_df_3$`External ID` <- rownames(transp_clr_num_grouped_df_3)
 
 ## Merge with metadata --###################################
+#read in training set and merge with viromics data
+train_meta= fread("training_metadata.txt", sep='\t', header=FALSE)
+train_meta=as.data.frame(train_meta)
+colnames(train_meta)= c("External ID", "Participant ID","race","data_type", "consent_age", "site_name", "diagnosis", "sex", "Antibiotics")
+train_meta=train_meta %>% filter(data_type == 'viromics')
+
+train_meta$diagnosis <- as.character(train_meta$diagnosis)
+train_meta$diagnosis[train_meta$diagnosis == "UC"] <- 1
+train_meta$diagnosis[train_meta$diagnosis == "CD"] <- 1
+train_meta$diagnosis[train_meta$diagnosis == "nonIBD"] <- 0
+train_meta$diagnosis <- as.numeric(train_meta$diagnosis)
+train_meta$'External ID' <- as.character(train_meta$'External ID')
+train_meta$'Participant ID' <- as.character(train_meta$'Participant ID')
+train_meta$sex <- as.factor(train_meta$sex)
+train_meta$site_name <- as.factor(train_meta$site_name)
+train_meta$consent_age <- as.numeric(train_meta$consent_age)
+train_meta$race <- as.factor(train_meta$race)
+
+view(train_meta)
+mergey <- merge(transp_clr_num_grouped_df_3, train_meta, by = "External ID")
+
+#read in testing metadata and merge with viromics
+test_meta= fread("testing_metadata.txt", sep='\t', header=FALSE)
+test_meta=as.data.frame(test_meta)
+colnames(test_meta)= c("External ID", "Participant ID","race","data_type", "consent_age", "site_name", "diagnosis", "sex", "Antibiotics")
+test_meta=test_meta %>% filter(data_type == 'viromics')
+
+test_meta$diagnosis <- as.character(test_meta$diagnosis)
+test_meta$diagnosis[test_meta$diagnosis == "UC"] <- 1
+test_meta$diagnosis[test_meta$diagnosis == "CD"] <- 1
+test_meta$diagnosis[test_meta$diagnosis == "nonIBD"] <- 0
+test_meta$diagnosis <- as.numeric(test_meta$diagnosis)
+test_meta$'External ID' <- as.character(test_meta$'External ID')
+test_meta$'Participant ID' <- as.character(test_meta$'Participant ID')
+test_meta$sex <- as.factor(test_meta$sex)
+test_meta$site_name <- as.factor(test_meta$site_name)
+test_meta$consent_age <- as.numeric(test_meta$consent_age)
+test_meta$race <- as.factor(test_meta$race)
+
+view(test_meta)
+mergeytest <- merge(transp_clr_num_grouped_df_3, test_meta, by = "External ID")
+
 # merge with diagnosis
-mergey <- merge(transp_clr_num_grouped_df_3, metadata1, by = "External ID")
-dim(transp_clr_num_grouped_df_3)
-dim(mergey)
-# make validation dataset that isn't used for training (the ids that are in the polyomic list)
-mergeytest <- mergey[which(as.character(mergey$`External ID`) %in% as.character(idlist)),]
-dim(mergeytest)
-# make training dataset (the ids that are NOT in the polyomic list)
-mergey <- subset(mergey, `External ID` %ni% idlist)
-dim(mergey)
-# make the ids the rownames for each dataframe, and then remove that column
-rownames(mergeytest) <- mergeytest$`External ID`
-mergeytest$`External ID` <- NULL
-rownames(mergey) <- mergey$`External ID`
-mergey$`External ID` <- NULL
+# mergey <- merge(transp_clr_num_grouped_df_3, metadata1, by = "External ID")
+# dim(transp_clr_num_grouped_df_3)
+# dim(mergey)
+# # make validation dataset that isn't used for training (the ids that are in the polyomic list)
+# mergeytest <- mergey[which(as.character(mergey$`External ID`) %in% as.character(idlist)),]
+# dim(mergeytest)
+# # make training dataset (the ids that are NOT in the polyomic list)
+# mergey <- subset(mergey, `External ID` %ni% idlist)
+# dim(mergey)
+# # make the ids the rownames for each dataframe, and then remove that column
+# rownames(mergeytest) <- mergeytest$`External ID`
+# mergeytest$`External ID` <- NULL
+# rownames(mergey) <- mergey$`External ID`
+# mergey$`External ID` <- NULL
 
 
 # remove any columns that have no/little variation between samples...
@@ -218,7 +265,8 @@ for(i in 1:(ncol(mergey)-1)){
   randName <- names(mergey)[i]
   mergeysub <- mergey[,c(randName, "diagnosis")]
   colnames(mergeysub) <- c(randName,"diagnosis")
-  mymod <- glm(as.formula(paste0("diagnosis ~ `",randName,"`")), data = mergeysub, family = "binomial")
+  mymod <- glm(as.formula(paste0("diagnosis ~ `", randName,"` + consent_age + sex + race + Antibiotics + (1|`Participant ID`) + (1|`site_name`)")), data = mergeysub, family = "binomial")
+  #mymod <- glm(as.formula(paste0("diagnosis ~ `",randName,"`")), data = mergeysub, family = "binomial")
   mymodsum <- summary(mymod)
   featureNames <- c(featureNames, randName)
   betas <- c(betas, mymodsum$coefficients[2,1])
@@ -346,4 +394,3 @@ ggplot(data = pred_df, aes(x = actual, y = predicted))+
   # labs(title = addToTitle)+
   ylab("Predicted Diagnosis")+
   xlab("Actual Diagnosis")
-
