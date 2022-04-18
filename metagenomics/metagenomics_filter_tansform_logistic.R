@@ -290,9 +290,9 @@ summary(testing_metadata[!duplicated(testing_metadata$`Participant ID`),diagnosi
 
 # ONLY RUN THIS IF YOU WANT TO DEAL WITH THE CONSEQUENCES
 testing_metadata %>%
-  write.table("name.txt", sep = "\t", row.names=F, col.names=F, quote=F)
+  write.table("testing_metadata.txt", sep = "\t", row.names=F, col.names=F, quote=F)
 training_metadata %>%
-  write.table("name.txt", sep = "\t", row.names=F, col.names=F, quote=F)
+  write.table("training_metadata.txt", sep = "\t", row.names=F, col.names=F, quote=F)
 
 
 ##--metagenomics only from here--#######
