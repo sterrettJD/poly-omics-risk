@@ -25,6 +25,7 @@ library(compositions)
 library(bestglm)
 library(MASS)
 library(tree)
+library(lme4)
 `%ni%` <- Negate(`%in%`)
 
 ## metadata --###################################
@@ -177,8 +178,12 @@ colnames(clr_num_grouped_df_3[,which(colnames(clr_num_grouped_df_3) %ni% mergey$
 # make validation dataset that isn't used for training 
 # (the ids that are in the testing list, derived in the metagenomics script)
 
-training_metadata <- fread("../training_metadata.txt")
-testing_metadata <- fread("../testing_metadata.txt")
+training_metadata <- fread("../training_metadata.txt") %>% 
+  as.data.frame() %>%
+  subset(data_type=="metatranscriptomics")
+testing_metadata <- fread("../testing_metadata.txt") %>% 
+  as.data.frame() %>%
+  subset(data_type=="metatranscriptomics")
 
 train_id_list <- training_metadata$`External ID`
 test_id_list <- testing_metadata$`External ID`
@@ -190,20 +195,18 @@ dim(mergeytest)
 mergey <- subset(mergey, `External ID` %in% train_id_list)
 dim(mergey)
 
-# combine mergeys with the metadata for model
-mergey <- merge(mergey, 
-                subset(training_metadata, data_type=="metatranscriptomics"), 
-                by="External ID")
-mergeytest <- merge(mergeytest, 
-                subset(testing_metadata, data_type=="metatranscriptomics"), 
-                by="External ID")
-
 
 # make the ids the rownames for each dataframe, and then remove that column
 rownames(mergeytest) <- mergeytest$`External ID`
 mergeytest$`External ID` <- NULL
 rownames(mergey) <- mergey$`External ID`
 mergey$`External ID` <- NULL
+
+rownames(testing_metadata) <- testing_metadata$`External ID`
+rownames(training_metadata) <- training_metadata$`External ID`
+
+rownames(mergey)
+rownames(training_metadata)
 
 # remove any columns that have no/little variation between samples...
 mergeytest_colsd <- apply(mergeytest, 2, sd, na.rm=T)
@@ -219,21 +222,58 @@ mergeytest <- mergeytest[,which(names(mergeytest) %in% toKeep)]
 mergey <- mergey[,which(names(mergey) %in% toKeep)]
 
 
+# combine mergeys with the metadata for model
+
+mergey <- merge(mergey, 
+                training_metadata, by='row.names')
+mergeytest <- merge(mergeytest, 
+                    testing_metadata, by='row.names')
+# get rid of row names and the 3-way diagnosis column
+mergey$Row.names <- NULL
+mergeytest$Row.names <- NULL
+mergey$diagnosis.y <- NULL
+mergeytest$diagnosis.y <- NULL
+
+# rename diagnosis.x
+mergey$diagnosis <- mergey$diagnosis.x
+mergey$diagnosis.x <- NULL
+
+mergeytest$diagnosis <- mergeytest$diagnosis.x
+mergeytest$diagnosis.x <- NULL
+
+
 head(colnames(mergeytest))
 head(colnames(mergey))
+
+tail(colnames(mergeytest),10)
+tail(colnames(mergey),10)
 
 ## run logistic regression for each feature --###################################
 featureNames <- c()
 betas <- c()
 pvals <- c()
-for(i in 1:(ncol(mergey)-1)){
+for(i in 1:(ncol(mergey)-10)){
 # for(i in 1:1){
   # randName <- names(mergey)[sample(1:length(names(mergey)),1)]
   randName <- names(mergey)[i]
-  mergeysub <- mergey[,c(randName, "diagnosis")]
-  colnames(mergeysub) <- c(randName,"diagnosis")
-  mymod <- glm(as.formula(paste0("diagnosis ~ `", randName,"` + consent_age + sex + race + (1|`Participant ID`) + (1|`site_name`)")), data = mergeysub, family = "binomial")
+  mergeysub <- mergey[,c(randName, "Participant ID", "race", 
+                         "consent_age", "site_name", 
+                         "sex", "Antibiotics", "diagnosis")]
+  
+  colnames(mergeysub) <- c(randName, "Participant ID", "race", 
+                           "consent_age", "site_name", 
+                           "sex", "Antibiotics", "diagnosis")
+  mergeysub$`Participant ID` <- as.factor(mergeysub$`Participant ID`)
+  
+  mymod <- glmer(as.formula(
+    paste0("diagnosis ~ `", randName,"` + consent_age + sex + race + Antibiotics + (1|`Participant ID`) + (1|`site_name`)")), 
+               data = mergeysub, family = "binomial", 
+    #control = glmerControl(optimizer ="Nelder_Mead")
+    control = glmerControl(optimizer ="bobyqa")
+    )
+  
   mymodsum <- summary(mymod)
+  print(mymodsum)
   featureNames <- c(featureNames, randName)
   betas <- c(betas, mymodsum$coefficients[2,1])
   pvals <- c(pvals, mymodsum$coefficients[2,4])
@@ -243,7 +283,7 @@ for(i in 1:(ncol(mergey)-1)){
   #   print(cor(mergeytest$diagnosis, predict(mymod, mergeytest)))
   # }
   # Sys.sleep(1)
-  # summary(mymod)
+  
   # print(randName)
   # print(mymodsum$aic)
 }
