@@ -20,7 +20,7 @@ library(R.utils)
 library(tidyverse)
 library(UpSetR)
 library(cowplot)
-library(biomformat)
+#library(biomformat)
 library(compositions)
 library(bestglm)
 library(MASS)
@@ -168,14 +168,26 @@ transp_clr_num_grouped_df_3$`External ID` <- rownames(transp_clr_num_grouped_df_
 mergey <- merge(transp_clr_num_grouped_df_3, metadata1, by = "External ID")
 dim(transp_clr_num_grouped_df_3)
 dim(mergey)
+rownames(t(num_grouped_df_3)) %ni% mergey$`External ID`
 
-# make validation dataset that isn't used for training (the ids that are in the polyomic list)
-# This validation dataset includes samples that have ALL omics of interest
-mergeytest <- mergey[which(as.character(mergey$`External ID`) %in% as.character(idlist)),]
+colnames(clr_num_grouped_df_3[,which(colnames(clr_num_grouped_df_3) %ni% mergey$`External ID`)])
+
+
+
+# make validation dataset that isn't used for training 
+# (the ids that are in the testing list, derived in the metagenomics script)
+
+training_metadata <- fread("../training_metadata.txt")
+testing_metadata <- fread("../testing_metadata.txt")
+
+train_id_list <- training_metadata$`External ID`
+test_id_list <- testing_metadata$`External ID`
+
+mergeytest <- mergey[which(as.character(mergey$`External ID`) %in% as.character(test_id_list)),]
 dim(mergeytest)
 
 # make training dataset (the ids that are NOT in the polyomic list)
-mergey <- subset(mergey, `External ID` %ni% idlist)
+mergey <- subset(mergey, `External ID` %in% train_id_list)
 dim(mergey)
 
 # make the ids the rownames for each dataframe, and then remove that column
@@ -228,8 +240,8 @@ for(i in 1:(ncol(mergey)-1)){
 }
 
 # multiple test p value for significance (bonferoni)
-# bonfsigthresh <- 0.05/(ncol(mergey)-1)
-bonfsigthresh <- 0.05
+bonfsigthresh <- 0.05/(ncol(mergey)-1)
+sigthresh <- 0.05
 
 # make dataframe
 # This is called TenResults, but it's really all results :)
@@ -240,19 +252,48 @@ tenResults$pvals <- as.numeric(tenResults$pvals)
 # tenResults <- tenResults %>% separate(featureNames,into=c("kingdom","phylum","class","order","family","genus","species"),convert=TRUE,sep="\\|")
 
 # column for plot colors
-tenResults$mycolors <- NA
-tenResults$mycolors[tenResults$pvals < bonfsigthresh] <- "sig"
-tenResults$mycolors[tenResults$pvals >= bonfsigthresh] <- "notsig"
-tenResults$mycolors <- as.factor(tenResults$mycolors)
+tenResults$significant <- NA
+tenResults$significant[tenResults$pvals < sigthresh] <- "sig"
+tenResults$significant[tenResults$pvals >= sigthresh] <- "notsig"
+tenResults$significant <- as.factor(tenResults$significant)
+
+# To work with the already written code for the rest
+tenResults$mycolors <- tenResults$significant 
+
+
+# column for plot colors
+tenResults$bonfsignificant <- NA
+tenResults$bonfsignificant[tenResults$pvals < bonfsigthresh] <- "sig"
+tenResults$bonfsignificant[tenResults$pvals >= bonfsigthresh] <- "notsig"
+tenResults$bonfsignificant <- as.factor(tenResults$bonfsignificant)
+
 
 # column for plot labels
 tenResults$delabels <- NA
-tenResults$delabels[tenResults$pvals < bonfsigthresh] <- tenResults$featureNames[tenResults$pvals < bonfsigthresh]
-tenResults$delabels[tenResults$pvals >= bonfsigthresh] <- NA
+tenResults$delabels[tenResults$pvals < sigthresh] <- tenResults$featureNames[tenResults$pvals < sigthresh]
+tenResults$delabels[tenResults$pvals >= sigthresh] <- NA
 tenResults$delabels <- as.character(tenResults$delabels)
 
+
+# column for plot labels
+tenResults$blabels <- NA
+tenResults$blabels[tenResults$pvals < bonfsigthresh] <- tenResults$featureNames[tenResults$pvals < bonfsigthresh]
+tenResults$blabels[tenResults$pvals >= bonfsigthresh] <- NA
+tenResults$blabels <- as.character(tenResults$blabels)
+
+
+
 # make volcano plot
-bplot <- ggplot(aes(x = betas, y = -log10(pvals), col=mycolors, label=delabels), data = tenResults) +
+bplot <- ggplot(aes(x = betas, y = -log10(pvals), col=significant, label=delabels), data = tenResults) +
+  # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
+  geom_point() +
+  theme_minimal() +
+  geom_text()
+bplot
+
+
+# For bonferonni adjusted vals
+bplot <- ggplot(aes(x = betas, y = -log10(pvals), col=bonfsignificant, label=blabels), data = tenResults) +
   # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
   geom_point() +
   theme_minimal() +
@@ -299,6 +340,9 @@ ggplot(data = pred_df, aes(x = actual, y = predicted))+
 subfeats <- sample(names(df_bestglm), 14)
 subfeats <- subfeats[which(subfeats != "diagnosis")]; subfeats <- c(subfeats, "diagnosis")
 bglm <- bestglm::bestglm(df_bestglm[,subfeats], family = binomial, IC = "BIC")
+
+bglm$ModelReport
+
 # prediction on reserved validation samples
 pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(bglm$BestModel, mergeytest))); colnames(pred_df) <- c("actual", "predicted")
 pred_df$actual <- as.factor(pred_df$actual)
