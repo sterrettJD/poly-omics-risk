@@ -1,3 +1,4 @@
+External ID	Participant ID	race	data_type	consent_age	site_name	diagnosis	sex	Antibiotics
 CSM5FZ3N	C3001	White	metabolomics	43	Cedars-Sinai	CD	Female	No
 CSM5FZ4C	C3001	White	metabolomics	43	Cedars-Sinai	CD	Female	No
 CSM5MCVV	C3001	White	metabolomics	43	Cedars-Sinai	CD	Female	No

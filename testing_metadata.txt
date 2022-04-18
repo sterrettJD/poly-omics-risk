@@ -1,3 +1,4 @@
+External ID	Participant ID	race	data_type	consent_age	site_name	diagnosis	sex	Antibiotics
 CSM5MCVH	C3009	White	metabolomics	56	Cedars-Sinai	CD	Male	No
 CSM5MCWE	C3009	White	metabolomics	56	Cedars-Sinai	CD	Male	No
 CSM67UAA	C3009	White	metabolomics	56	Cedars-Sinai	CD	Male	No
