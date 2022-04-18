@@ -277,14 +277,22 @@ training_metadata <- training_metadata[,c("External ID",
                                         "sex",
                                         "Antibiotics")]
 
+summary(training_metadata$diagnosis)
+summary(testing_metadata$diagnosis)
+
+dim(training_metadata[!duplicated(training_metadata$`Participant ID`),])
+dim(testing_metadata[!duplicated(testing_metadata$`Participant ID`),])
+
+summary(training_metadata[!duplicated(training_metadata$`Participant ID`),diagnosis])
+summary(testing_metadata[!duplicated(testing_metadata$`Participant ID`),diagnosis])
 
 
 
 # ONLY RUN THIS IF YOU WANT TO DEAL WITH THE CONSEQUENCES
-#testing_metadata %>%
-#  write.table("testing_metadata.txt", sep = "\t")
-#training_metadata %>%
-#  write.table("training_metadata.txt", sep="\t")
+testing_metadata %>%
+  write.table("name.txt", sep = "\t", row.names=F, col.names=F, quote=F)
+training_metadata %>%
+  write.table("name.txt", sep = "\t", row.names=F, col.names=F, quote=F)
 
 
 ##--metagenomics only from here--#######
