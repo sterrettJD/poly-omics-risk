@@ -16,6 +16,7 @@ list.files()
 # install.packages("bestglm")
 # install.packages("tree")
 # install.packages("compositions")
+# install.packages("lme4")
 library(data.table)
 library(ggplot2)
 library(R.utils)
@@ -28,65 +29,66 @@ library(bestglm)
 library(MASS)
 library(tree)
 library(compositions)
+library(lme4)
 `%ni%` <- Negate(`%in%`)
 
-## metadata --###################################
-metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
-str(metadata)
-
-
-# make upset plot for sample overlap by datatype
-listInput <- list(
-  # biopsy_16S = c(as.character(subset(metadata, data_type == "biopsy_16S")[["External ID"]])),
-  # host_genome = c(as.character(subset(metadata, data_type == "host_genome")[["External ID"]])),
-  # host_transcriptomics  = c(as.character(subset(metadata, data_type == "host_transcriptomics")[["External ID"]])),
-  # methylome = c(as.character(subset(metadata, data_type == "methylome")[["External ID"]])),
-  # proteomics = c(as.character(subset(metadata, data_type == "proteomics")[["External ID"]])),
-  # serology  = c(as.character(subset(metadata, data_type == "serology")[["External ID"]])),
-  # stool_16S = c(as.character(subset(metadata, data_type == "stool_16S")[["External ID"]])),
-  metabolomics  = c(as.character(subset(metadata, data_type == "metabolomics")[["External ID"]])), 
-  metagenomics = c(as.character(subset(metadata, data_type == "metagenomics")[["External ID"]])),  
-  metatranscriptomics = c(as.character(subset(metadata, data_type == "metatranscriptomics")[["External ID"]])), 
-  viromics  = c(as.character(subset(metadata, data_type == "viromics")[["External ID"]]))
-)
-upset(fromList(listInput), order.by = "freq")
-
-# make a list of the ids that are in the intersection of metabolomics, metagenomics, viromics, metatranscriptomics
-i1 <- intersect(c(as.character(subset(metadata, data_type == "metabolomics")[["External ID"]])), 
-                c(as.character(subset(metadata, data_type == "metagenomics")[["External ID"]]))
-)
-
-i2 <- intersect(i1, c(as.character(subset(metadata, data_type == "viromics")[["External ID"]])))
-i3 <- intersect(i2, c(as.character(subset(metadata, data_type == "metatranscriptomics")[["External ID"]])))
-length(i3)
-idlist <- unique(i3)
-# idlist <- as.data.frame(idlist); colnames(idlist) <- c("idlist")
-# head(idlist)
-# idlistsep <- idlist %>% separate(idlist,into=c("idlist","junk"),convert=TRUE,sep="_profi")
-# idlistsep <- idlistsep$idlist
-
-# subset to jsut one datatype to explore diagnosis counts
-metadata <- subset(metadata, data_type == "viromics")
-dim(metadata)
-# metadata <- subset(metadata, `External ID` %in% idlist)
-
-
-# fill missinig enries with NA and view the columns that are mostly non-NA
-metadata[metadata==""] <- NA
-isna <- sapply(metadata, function(x) sum(is.na(x)))
-isna[isna < 100]
-summary(metadata$diagnosis)
-metadata1 <- as.data.frame(metadata[,c("External ID","diagnosis","Participant ID","site_name","consent_age","sex")])
-metadata1$diagnosis <- as.character(metadata1$diagnosis)
-metadata1$diagnosis[metadata1$diagnosis == "UC"] <- 1
-metadata1$diagnosis[metadata1$diagnosis == "CD"] <- 1
-metadata1$diagnosis[metadata1$diagnosis == "nonIBD"] <- 0
-metadata1$diagnosis <- as.numeric(metadata1$diagnosis)
-metadata1$'External ID' <- as.character(metadata1$'External ID')
-metadata1$'Participant ID' <- as.character(metadata1$'Participant ID')
-metadata1$sex <- as.factor(metadata1$sex)
-metadata1$site_name <- as.factor(metadata1$site_name)
-metadata1$consent_age <- as.numeric(metadata1$consent_age)
+# ## metadata --###################################
+# metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+# str(metadata)
+# 
+# 
+# # make upset plot for sample overlap by datatype
+# listInput <- list(
+#   # biopsy_16S = c(as.character(subset(metadata, data_type == "biopsy_16S")[["External ID"]])),
+#   # host_genome = c(as.character(subset(metadata, data_type == "host_genome")[["External ID"]])),
+#   # host_transcriptomics  = c(as.character(subset(metadata, data_type == "host_transcriptomics")[["External ID"]])),
+#   # methylome = c(as.character(subset(metadata, data_type == "methylome")[["External ID"]])),
+#   # proteomics = c(as.character(subset(metadata, data_type == "proteomics")[["External ID"]])),
+#   # serology  = c(as.character(subset(metadata, data_type == "serology")[["External ID"]])),
+#   # stool_16S = c(as.character(subset(metadata, data_type == "stool_16S")[["External ID"]])),
+#   metabolomics  = c(as.character(subset(metadata, data_type == "metabolomics")[["External ID"]])), 
+#   metagenomics = c(as.character(subset(metadata, data_type == "metagenomics")[["External ID"]])),  
+#   metatranscriptomics = c(as.character(subset(metadata, data_type == "metatranscriptomics")[["External ID"]])), 
+#   viromics  = c(as.character(subset(metadata, data_type == "viromics")[["External ID"]]))
+# )
+# upset(fromList(listInput), order.by = "freq")
+# 
+# # make a list of the ids that are in the intersection of metabolomics, metagenomics, viromics, metatranscriptomics
+# i1 <- intersect(c(as.character(subset(metadata, data_type == "metabolomics")[["External ID"]])), 
+#                 c(as.character(subset(metadata, data_type == "metagenomics")[["External ID"]]))
+# )
+# 
+# i2 <- intersect(i1, c(as.character(subset(metadata, data_type == "viromics")[["External ID"]])))
+# i3 <- intersect(i2, c(as.character(subset(metadata, data_type == "metatranscriptomics")[["External ID"]])))
+# length(i3)
+# idlist <- unique(i3)
+# # idlist <- as.data.frame(idlist); colnames(idlist) <- c("idlist")
+# # head(idlist)
+# # idlistsep <- idlist %>% separate(idlist,into=c("idlist","junk"),convert=TRUE,sep="_profi")
+# # idlistsep <- idlistsep$idlist
+# 
+# # subset to jsut one datatype to explore diagnosis counts
+# metadata <- subset(metadata, data_type == "viromics")
+# dim(metadata)
+# # metadata <- subset(metadata, `External ID` %in% idlist)
+# 
+# 
+# # fill missinig enries with NA and view the columns that are mostly non-NA
+# metadata[metadata==""] <- NA
+# isna <- sapply(metadata, function(x) sum(is.na(x)))
+# isna[isna < 100]
+# summary(metadata$diagnosis)
+# metadata1 <- as.data.frame(metadata[,c("External ID","diagnosis","Participant ID","site_name","consent_age","sex")])
+# metadata1$diagnosis <- as.character(metadata1$diagnosis)
+# metadata1$diagnosis[metadata1$diagnosis == "UC"] <- 1
+# metadata1$diagnosis[metadata1$diagnosis == "CD"] <- 1
+# metadata1$diagnosis[metadata1$diagnosis == "nonIBD"] <- 0
+# metadata1$diagnosis <- as.numeric(metadata1$diagnosis)
+# metadata1$'External ID' <- as.character(metadata1$'External ID')
+# metadata1$'Participant ID' <- as.character(metadata1$'Participant ID')
+# metadata1$sex <- as.factor(metadata1$sex)
+# metadata1$site_name <- as.factor(metadata1$site_name)
+# metadata1$consent_age <- as.numeric(metadata1$consent_age)
 
 ## Viromics taxonomic_profiles --###################################
 # #MetaPhlAn2
@@ -136,7 +138,7 @@ hist(colSums(num_grouped_df_3))
 # add epsilon to all entries to set up for center log transform
 pepsi <- 1E-06
 num_grouped_df_3 <- num_grouped_df_3 + pepsi
-View(num_grouped_df_3)
+#View(num_grouped_df_3)
 
 
 ## CLT transform --###################################
@@ -190,8 +192,8 @@ train_meta$site_name <- as.factor(train_meta$site_name)
 train_meta$consent_age <- as.numeric(train_meta$consent_age)
 train_meta$race <- as.factor(train_meta$race)
 
-view(train_meta)
-mergey <- merge(transp_clr_num_grouped_df_3, train_meta, by = "External ID")
+#view(train_meta)
+
 
 #read in testing metadata and merge with viromics
 test_meta= fread("testing_metadata.txt", sep='\t', header=FALSE)
@@ -211,8 +213,10 @@ test_meta$site_name <- as.factor(test_meta$site_name)
 test_meta$consent_age <- as.numeric(test_meta$consent_age)
 test_meta$race <- as.factor(test_meta$race)
 
-view(test_meta)
-mergeytest <- merge(transp_clr_num_grouped_df_3, test_meta, by = "External ID")
+#view(test_meta)
+
+
+
 
 # merge with diagnosis
 # mergey <- merge(transp_clr_num_grouped_df_3, metadata1, by = "External ID")
@@ -234,6 +238,7 @@ mergeytest <- merge(transp_clr_num_grouped_df_3, test_meta, by = "External ID")
 # remove any columns that have no/little variation between samples...
 mergeytest_colsd <- apply(mergeytest, 2, sd, na.rm=T)
 mergey_colsd <- apply(mergey, 2, sd, na.rm=T)
+
 # qthresh <- quantile(colsd, 0.05, na.rm=T)
 hist(as.numeric(mergeytest_colsd))
 hist(as.numeric(mergey_colsd))
@@ -244,16 +249,18 @@ mergeytest <- mergeytest[,which(names(mergeytest) %in% toKeep)]
 mergey <- mergey[,which(names(mergey) %in% toKeep)]
 
 # rename the column names with just the species
-cn <- as.data.frame(colnames(mergey)); colnames(cn) <- c("cn")
-cn <- cn %>% separate(cn,into=c("junk","species"),convert=TRUE,sep="species=")
-cn <- cn$species
-cn[length(cn)] <- "diagnosis"
-head(cn)
-tail(cn)
-colnames(mergeytest) <- cn
-colnames(mergey) <- cn
+# cn <- as.data.frame(colnames(mergey)); colnames(cn) <- c("cn")
+# cn <- cn %>% separate(cn,into=c("junk","species"),convert=TRUE,sep="species=")
+# cn <- cn$species
+# cn[length(cn)] <- "diagnosis"
+# head(cn)
+# tail(cn)
+# colnames(mergeytest) <- cn
+# colnames(mergey) <- cn
 
-
+#combine mergys with metadata
+mergey <- merge(transp_clr_num_grouped_df_3, train_meta, by = "External ID")
+mergeytest <- merge(transp_clr_num_grouped_df_3, test_meta, by = "External ID")
 
 ## run logistic regression for each feature --###################################
 featureNames <- c()
@@ -263,9 +270,22 @@ for(i in 1:(ncol(mergey)-1)){
   # for(i in 1:1){
   # randName <- names(mergey)[sample(1:length(names(mergey)),1)]
   randName <- names(mergey)[i]
-  mergeysub <- mergey[,c(randName, "diagnosis")]
-  colnames(mergeysub) <- c(randName,"diagnosis")
-  mymod <- glm(as.formula(paste0("diagnosis ~ `", randName,"` + consent_age + sex + race + Antibiotics + (1|`Participant ID`) + (1|`site_name`)")), data = mergeysub, family = "binomial")
+  mergeysub <- mergey[,c(randName, "Participant ID", "race", 
+                         "consent_age", "site_name", 
+                         "sex", "Antibiotics", "diagnosis")]
+  
+  colnames(mergeysub) <- c(randName, "Participant ID", "race", 
+                           "consent_age", "site_name", 
+                           "sex", "Antibiotics", "diagnosis")
+  mergeysub$`Participant ID` <- as.factor(mergeysub$`Participant ID`)
+  
+  mymod <- glmer(as.formula(
+    paste0("diagnosis ~ `", randName,"` + consent_age + sex + race + Antibiotics + (1|`Participant ID`) + (1|`site_name`)")), 
+    data = mergeysub, family = "binomial", 
+    #control = glmerControl(optimizer ="Nelder_Mead")
+    control = glmerControl(optimizer ="bobyqa")
+  )
+  #mymod <- glm(as.formula(paste0("diagnosis ~ `", randName,"` + consent_age + sex + race + Antibiotics + (1|`Participant ID`) + (1|`site_name`)")), data = mergeysub, family = "binomial")
   #mymod <- glm(as.formula(paste0("diagnosis ~ `",randName,"`")), data = mergeysub, family = "binomial")
   mymodsum <- summary(mymod)
   featureNames <- c(featureNames, randName)
