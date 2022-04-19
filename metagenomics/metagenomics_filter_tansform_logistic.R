@@ -1,7 +1,6 @@
 
-#setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
+setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
 
-setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores")
 list.files()
 
 # install.packages("data.table")
@@ -21,19 +20,18 @@ library(R.utils)
 library(tidyverse)
 library(UpSetR)
 library(cowplot)
-#library(biomformat)
+library(biomformat)
 library(compositions)
 library(bestglm)
 library(MASS)
 library(tree)
-`%ni%` <- Negate(`%in%`)
+library(lme4)
+'%ni%' <- Negate('%in%')
 
 ## metadata --###################################
 metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
 str(metadata)
 # metadata <- subset(metadata, data_type == "metagenomics")
-
-
 
 # make barplt by data type
 par(mar = c(9, 4, 2, 2) + 1)
@@ -70,234 +68,6 @@ idlist <- unique(i3)
 # idlistsep <- idlistsep$idlist
 
 # subset to jsut one datatype to explore diagnosis counts
-
-subset_metadata <- metadata %>%
-  subset(data_type %in% c("metabolomics", 
-                          "metagenomics", 
-                          "metatranscriptomics", 
-                          "viromics"))
-
-
-samples_with_all_omics <- metadata[which(metadata$`External ID` %in% idlist),]
-
-samples_with_all_omics$ibd <- samples_with_all_omics$diagnosis!="nonIBD"
-
-samples_with_all_omics %>% 
-  count(ibd,`Participant ID`) %>% 
-  group_by(ibd) %>%
-  arrange(desc(n), by_group=ibd)
-
-samples_with_all_omics[sample(1:nrow(samples_with_all_omics), 30),] %>% count(ibd,`Participant ID`)
-
-
-
-dims <- c()
-
-
-for(par in unique(metadata$`Participant ID`)){
-  parRows <- nrow(metadata[metadata$`Participant ID`==par])
-  print(nrow(metadata[metadata$`Participant ID`==par]))
-  dims <- c(dims,parRows)
-}
-mean(dims)
-
-
-grouped_meta <- group_by(metadata, col=`Participant ID`, col=data_type)
-
-counts_df <- metadata %>% count(as.character(diagnosis)=="nonIBD", `Participant ID`, data_type) 
-
-colnames(counts_df) <- c("nonIBD", "Participant ID", "data_type", "n")
-
-sum(counts_df$n) == nrow(metadata)
-
-counts_df <- subset(counts_df, 
-                    data_type %in% c("metabolomics", 
-                                     "metagenomics", 
-                                     "metatranscriptomics", 
-                                     "viromics"))
-
-par_with_all_omics <- c()
-par_without_all_omics <- c()
-for(par in unique(counts_df$`Participant ID`)){
-  participant_df <-subset(counts_df, `Participant ID` == par)
-  nonibd <- participant_df$nonIBD[1]
-  if(is.na(nonibd)){
-    print(paste0("diagnosis empty for ", par))
-  }else if(nonibd==FALSE){
-    diagnosis <- "IBD"
-  }else{
-    diagnosis <- "nonIBD"
-  }
-  
-  
-  if(nrow(participant_df)!=4){
-    print("LESS THAN 4 omics")
-    nsamples <- sum(participant_df$n)
-    nomics <- sum(participant_df$n>0) 
-    print(paste0(diagnosis, " sample ", par, " has ", nsamples, " samples over ", nomics, " omics layers" ))
-    par_without_all_omics <- c(par_without_all_omics, par)
-  }else{
-    nsamples <- sum(participant_df$n)
-    nomics <- sum(participant_df$n>0) 
-    print(paste0(diagnosis, " sample ", par, " has ", nsamples, " samples over ", nomics, " omics layers" ))
-    par_with_all_omics <- c(par_with_all_omics, par)
-    
-    
-  }
-}
-
-length(par_with_all_omics)
-length(par_without_all_omics)
-length(unique(counts_df$`Participant ID`)) == (length(par_with_all_omics) +length(par_without_all_omics))
-
-# only 1 participant doesn't have any of the 4
-# 26 don't have 4 omics
-# 104 have all 4 omics
-
-counts_df[counts_df$`Participant ID` %in% length(par_without_all_omics)]
-
-# sample 30 participants with all omics layers
-sampled <- par_with_all_omics[sample(1:length(par_with_all_omics), 30)]
-
-
-# grab those from the dataframe
-sampled_df <- metadata[metadata$`Participant ID` %in% sampled]
-sampled_df %<>% 
-  count(as.character(diagnosis)=="nonIBD", `Participant ID`, data_type) %>%
-  subset(data_type %in% c("metabolomics", 
-                          "metagenomics", 
-                          "metatranscriptomics", 
-                          "viromics"))
-
-summary(sampled_df)
-
-length(unique(subset_metadata$`External ID`))
-
-total_samples_per_participant <- c()
-for(par in unique(sampled_df$`Participant ID`)){
-  participant_df <-subset(metadata, `Participant ID` == par)
-  print(paste0(par, " has ", nrow(participant_df), " total samples"))
-  total_samples_per_participant <- c(total_samples_per_participant, nrow(participant_df))
-}
-
-summary(total_samples_per_participant)
-
-dim(metadata[metadata$`Participant ID` %in% sampled])
-dim(metadata)
-
-
-parlist <- c()
-quadn <- c()
-nonquadn <- c()
-for(par in unique(subset_metadata$`Participant ID`)){
-  pars_df <- subset(subset_metadata, `Participant ID` == par)
-  pars_df_quad <- subset(pars_df, `External ID` %in% idlist)
-  pars_df_nonquad <- subset(pars_df, `External ID` %ni% idlist)
-  parsquad_nsamples <- nrow(pars_df_quad)
-  parsnonquad_nsamples <- nrow(pars_df_nonquad)
-  
-  parlist <- c(parlist, par)
-  quadn <- c(quadn, parsquad_nsamples)
-  nonquadn <- c(nonquadn, parsnonquad_nsamples)
-}
-
-pars_quad_df <- data.frame(parlist, quadn, nonquadn)
-pars_quad_df$sum <- pars_quad_df$quadn + pars_quad_df$nonquadn 
-pars_quad_df$percent <- pars_quad_df$quadn/pars_quad_df$sum 
-
-pars_quad_df[order(-pars_quad_df$percent, -pars_quad_df$sum),]
-
-pars_quad_df[order(pars_quad_df$nonquadn),] %>% 
-  subset(quadn>mean(quadn)) %>% arrange(desc(by=percent))
-
-plotvecquad <- c()
-plotvecnonquad <- c()
-for(i in 1:50){
-  top_par_quad <- pars_quad_df[order(pars_quad_df$nonquadn),] %>% 
-    subset(quadn>mean(quadn)) %>% 
-    arrange(desc(by=percent)) 
-  
-  top_par_quad <- top_par_quad[1:i,]
-  #top_par_quad <- top_par_quad[sample(1:nrow(top_par_quad), 26),]
-  
-  colSums(top_par_quad[,c("quadn", "nonquadn")])
-  
-  plotvecquad <- c(plotvecquad, sum(top_par_quad[,c("quadn")]))
-  plotvecnonquad <- c(plotvecnonquad, sum(top_par_quad[,c("nonquadn")]))
-}
-
-plotdf <- data.frame(1:50,plotvecquad,plotvecnonquad)
-colnames(plotdf) <- c("index", "quad", "nonquad")
-ggplot(data = plotdf, aes(x = index)) + 
-  geom_point(aes(y = quad), color = "red") + 
-  geom_point(aes(y = nonquad), color = "blue")
-
-
-
-top_par_quad <- pars_quad_df[order(pars_quad_df$nonquadn),] %>% 
-  subset(quadn>mean(quadn)) %>% 
-  arrange(desc(by=percent)) 
-
-top_par_quad <- top_par_quad[1:30,]
-#top_par_quad <- top_par_quad[sample(1:nrow(top_par_quad), 26),]
-
-sum(colSums(top_par_quad[,c("quadn", "nonquadn")]))
-
-top_par_quad$uniquequadsamplen <- top_par_quad$quadn/4
-top_par_quad
-
-
-testing_metadata <- subset(subset_metadata, `Participant ID` %in% top_par_quad$parlist)
-
-testing_metadata <- testing_metadata[,c("External ID",
-                                        "Participant ID",
-                                        "race",
-                                        "data_type",
-                                        "consent_age",
-                                        "site_name",
-                                        "diagnosis",
-                                        "sex",
-                                        "Antibiotics")]
-
-
-
-training_metadata <- subset(subset_metadata, `Participant ID` %ni% top_par_quad$parlist)
-
-nrow(training_metadata) + nrow(testing_metadata) == nrow(subset_metadata)
-
-
-
-training_metadata <- training_metadata[,c("External ID",
-                                        "Participant ID",
-                                        "race",
-                                        "data_type",
-                                        "consent_age",
-                                        "site_name",
-                                        "diagnosis",
-                                        "sex",
-                                        "Antibiotics")]
-
-summary(training_metadata$diagnosis)
-summary(testing_metadata$diagnosis)
-
-dim(training_metadata[!duplicated(training_metadata$`Participant ID`),])
-dim(testing_metadata[!duplicated(testing_metadata$`Participant ID`),])
-
-summary(training_metadata[!duplicated(training_metadata$`Participant ID`),diagnosis])
-summary(testing_metadata[!duplicated(testing_metadata$`Participant ID`),diagnosis])
-
-
-
-# ONLY RUN THIS IF YOU WANT TO DEAL WITH THE CONSEQUENCES
-testing_metadata %>%
-  write.table("testing_metadata.txt", sep = "\t", row.names=F, quote=F,
-              col.names = TRUE)
-training_metadata %>%
-  write.table("training_metadata.txt", sep = "\t", row.names=F, quote=F,
-              col.names = TRUE)
-
-
-##--metagenomics only from here--#######
 metadata <- subset(metadata, data_type == "metagenomics")
 # metadata <- subset(metadata, `External ID` %in% idlist)
 
@@ -312,6 +82,50 @@ metadata1$diagnosis[metadata1$diagnosis == "UC"] <- 1
 metadata1$diagnosis[metadata1$diagnosis == "CD"] <- 1
 metadata1$diagnosis[metadata1$diagnosis == "nonIBD"] <- 0
 metadata1$diagnosis <- as.numeric(metadata1$diagnosis)
+
+# training_metadata <- fread("https://raw.githubusercontent.com/sterrettJD/poly-omics-risk/main/training_metadata.txt?token=GHSAT0AAAAAABQ2LF4FWL6XDQDJLZ4C4F5SYS5WH4Q", sep = "\t")
+training_metadata <- fread("training_metadata.txt", sep = "\t")
+training_metadata <- subset(training_metadata, data_type == "metagenomics")
+training_metadata[training_metadata==""] <- NA
+isna <- sapply(training_metadata, function(x) sum(is.na(x)))
+isna[isna < 100]
+summary(training_metadata$diagnosis)
+training_metadata <- as.data.frame(training_metadata[,c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race")])
+training_metadata$diagnosis <- as.character(training_metadata$diagnosis)
+training_metadata$diagnosis[training_metadata$diagnosis == "UC"] <- 1
+training_metadata$diagnosis[training_metadata$diagnosis == "CD"] <- 1
+training_metadata$diagnosis[training_metadata$diagnosis == "nonIBD"] <- 0
+training_metadata$diagnosis <- as.numeric(training_metadata$diagnosis)
+training_metadata$site_name <- as.factor(training_metadata$site_name)
+training_metadata$sex <- as.factor(training_metadata$sex)
+training_metadata$race <- as.factor(training_metadata$race)
+
+# testing_metadata <- fread("https://raw.githubusercontent.com/sterrettJD/poly-omics-risk/main/testing_metadata.txt?token=GHSAT0AAAAAABQ2LF4EWNW2TVN2PVOHJO6MYS5WHLQ", sep = "\t")
+testing_metadata <- fread("testing_metadata.txt", sep = "\t")
+testing_metadata <- subset(testing_metadata, data_type == "metagenomics")
+testing_metadata[testing_metadata==""] <- NA
+isna <- sapply(testing_metadata, function(x) sum(is.na(x)))
+isna[isna < 100]
+summary(testing_metadata$diagnosis)
+testing_metadata <- as.data.frame(testing_metadata[,c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race")])
+testing_metadata$diagnosis <- as.character(testing_metadata$diagnosis)
+testing_metadata$diagnosis[testing_metadata$diagnosis == "UC"] <- 1
+testing_metadata$diagnosis[testing_metadata$diagnosis == "CD"] <- 1
+testing_metadata$diagnosis[testing_metadata$diagnosis == "nonIBD"] <- 0
+testing_metadata$diagnosis <- as.numeric(testing_metadata$diagnosis)
+testing_metadata$site_name <- as.factor(testing_metadata$site_name)
+testing_metadata$sex <- as.factor(testing_metadata$sex)
+testing_metadata$race <- as.factor(testing_metadata$race)
+
+# the one individual in testing that has a different race class:
+summary(testing_metadata$race)
+summary(training_metadata$race)
+testing_metadata$race <- as.character(testing_metadata$race)
+# clump "American Indian or Alaska Native" into "Other"
+testing_metadata$race[which(testing_metadata$race == "American Indian or Alaska Native")] <- "Other"
+testing_metadata$race <- as.factor(testing_metadata$race)
+summary(testing_metadata$race)
+summary(training_metadata$race)
 
 ## Metagenomes taxonomic_profiles_3 --###################################
 # fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/WGS/1818/taxonomic_profiles_3.tsv.gz", header=T)
@@ -400,15 +214,21 @@ transp_clr_num_grouped_df_3$`External ID` <- rownames(transp_clr_num_grouped_df_
 
 ## Merge with metadata --###################################
 # merge with diagnosis
-mergey <- merge(transp_clr_num_grouped_df_3, metadata1, by = "External ID")
+mergey <- merge(transp_clr_num_grouped_df_3, training_metadata, by = "External ID")
 dim(transp_clr_num_grouped_df_3)
 dim(mergey)
+length(unique(mergey[,c("Participant ID")]))
 # make validation dataset that isn't used for training (the ids that are in the polyomic list)
-mergeytest <- mergey[which(as.character(mergey$`External ID`) %in% as.character(idlist)),]
+mergeytest <- merge(transp_clr_num_grouped_df_3, testing_metadata, by = "External ID")
+dim(transp_clr_num_grouped_df_3)
 dim(mergeytest)
+length(unique(mergeytest[,c("Participant ID")]))
+
+# mergeytest <- mergey[which(as.character(mergey$`External ID`) %in% as.character(idlist)),]
+# dim(mergeytest)
 # make training dataset (the ids that are NOT in the polyomic list)
-mergey <- subset(mergey, `External ID` %ni% idlist)
-dim(mergey)
+# mergey <- subset(mergey, `External ID` %ni% idlist)
+# dim(mergey)
 # make the ids the rownames for each dataframe, and then remove that column
 rownames(mergeytest) <- mergeytest$`External ID`
 mergeytest$`External ID` <- NULL
@@ -416,12 +236,14 @@ rownames(mergey) <- mergey$`External ID`
 mergey$`External ID` <- NULL
 
 # remove any columns that have no/little variation between samples...
-mergeytest_colsd <- apply(mergeytest, 2, sd, na.rm=T)
-mergey_colsd <- apply(mergey, 2, sd, na.rm=T)
+mergeytest_colsd <- apply(mergeytest[complete.cases(mergeytest),grep("s__", names(mergeytest), invert = F)], 2, sd, na.rm=T)
+mergey_colsd <- apply(mergey[complete.cases(mergey),grep("s__", names(mergey), invert = F)], 2, sd, na.rm=T)
 # qthresh <- quantile(colsd, 0.05, na.rm=T)
 hist(as.numeric(mergeytest_colsd))
 hist(as.numeric(mergey_colsd))
-toKeep <- intersect(c(names(mergeytest_colsd)[which(mergeytest_colsd > 0)]), c(names(mergey_colsd)[which(mergey_colsd > 0)]))
+toKeep <- c(intersect(c(names(mergeytest_colsd)[which(mergeytest_colsd > 0.1)]), c(names(mergey_colsd)[which(mergey_colsd > 0.1)])),
+            c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race")
+            )
 length(toKeep)
 length(mergey_colsd)
 mergeytest <- mergeytest[,which(names(mergeytest) %in% toKeep)]
@@ -431,74 +253,123 @@ mergey <- mergey[,which(names(mergey) %in% toKeep)]
 cn <- as.data.frame(colnames(mergey)); colnames(cn) <- c("cn")
 cn <- cn %>% separate(cn,into=c("junk","species"),convert=TRUE,sep="\\|s__")
 cn <- cn$species
-cn[length(cn)] <- "diagnosis"
-head(cn)
-tail(cn)
+cn[is.na(cn)] <- c("Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race")
+head(cn,20)
+tail(cn,20)
+cn <- gsub(pattern = "\\[", replacement = "", cn)
+cn <- gsub(pattern = "\\]", replacement = "", cn)
 colnames(mergeytest) <- cn
 colnames(mergey) <- cn
 
-## run logistic regression for each feature --###################################
-featureNames <- c()
-betas <- c()
-pvals <- c()
-for(i in 1:(ncol(mergey)-1)){
-# for(i in 1:1){
-  # randName <- names(mergey)[sample(1:length(names(mergey)),1)]
-  randName <- names(mergey)[i]
-  mergeysub <- mergey[,c(randName, "diagnosis")]
-  colnames(mergeysub) <- c(randName,"diagnosis")
-  mymod <- glm(as.formula(paste0("diagnosis ~ `",randName,"`")), data = mergeysub, family = "binomial")
-  mymodsum <- summary(mymod)
-  featureNames <- c(featureNames, randName)
-  betas <- c(betas, mymodsum$coefficients[2,1])
-  pvals <- c(pvals, mymodsum$coefficients[2,4])
-  # validate on testing set
-  # if(mymodsum$coefficients[2,4] < 0.05){
-  #   print(randName)
-  #   print(cor(mergeytest$diagnosis, predict(mymod, mergeytest)))
-  # }
-  # Sys.sleep(1)
-  # summary(mymod)
-  # print(randName)
-  # print(mymodsum$aic)
-}
+## run LASSO regression for all features --###################################
+library(glmmLasso)
 
-# multiple test p value for significance (bonferoni)
-bonfsigthresh <- 0.05/(ncol(mergey)-1)
-# make dataframe
-tenResults <- as.data.frame(cbind(featureNames,betas,pvals))
-tenResults$featureNames <- as.character(tenResults$featureNames)
-tenResults$betas <- as.numeric(tenResults$betas)
-tenResults$pvals <- as.numeric(tenResults$pvals)
-# tenResults <- tenResults %>% separate(featureNames,into=c("kingdom","phylum","class","order","family","genus","species"),convert=TRUE,sep="\\|")
+## linear mixed model
+mergey$diagnosis <- as.integer(as.character(mergey$diagnosis))
+# mergey$diagnosis <- as.numeric(mergey$diagnosis)
+mergey$site_name <- as.factor(mergey$site_name)
+mergey$consent_age <- as.numeric(mergey$consent_age)
+mergey$`Participant_ID` <- as.factor(mergey$`Participant_ID`)
+mergey$sex <- as.factor(mergey$sex)
+mergey$race <- as.factor(mergey$race)
 
-# column for plot colors
-tenResults$mycolors <- NA
-tenResults$mycolors[tenResults$pvals < bonfsigthresh] <- "sig"
-tenResults$mycolors[tenResults$pvals >= bonfsigthresh] <- "notsig"
-tenResults$mycolors <- as.factor(tenResults$mycolors)
+str(mergey[,1:30])
+str(mergey[,(ncol(mergey)-30):ncol(mergey)])
 
-# column for plot labels
-tenResults$delabels <- NA
-tenResults$delabels[tenResults$pvals < bonfsigthresh] <- tenResults$featureNames[tenResults$pvals < bonfsigthresh]
-tenResults$delabels[tenResults$pvals >= bonfsigthresh] <- NA
-tenResults$delabels <- as.character(tenResults$delabels)
+traindf <- as.data.frame(mergey[complete.cases(mergey),])
+dim(traindf)
+dim(mergey)
+varlist <- cn[which(cn %ni% c("diagnosis", "Participant_ID"))]
+# varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
+varstring <- paste0(varlist, collapse = " + ", sep = "")
+lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)), 
+                 data = traindf,
+                 rnd = list(Participant_ID=~1), 
+                 lambda=100, 
+                 family = binomial(link = "logit"))
+summary(lm1)
+lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
+lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
+lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race"))
 
-# make volcano plot
-bplot <- ggplot(aes(x = betas, y = -log10(pvals), col=mycolors, label=delabels), data = tenResults) +
-  # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
-  geom_point() +
-  theme_minimal() +
-  geom_text()
-bplot
+# ## run logistic regression for each feature --###################################
+# nforloop <- (ncol(mergey)-6)
+# featureNames <- rep(NA,nforloop)
+# betas <- rep(NA,nforloop)
+# pvals <- rep(NA,nforloop)
+# # for(i in 1:(ncol(mergey)-6)){
+# # for(i in 1:nforloop){
+# for(i in sample(1:nforloop,10)){
+#   # randName <- names(mergey)[sample(1:length(names(mergey)),1)]
+#   randName <- names(mergey)[i]
+#   mergeysub <- mergey[,c(randName, c("Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race"))]
+#   colnames(mergeysub) <- c(randName, "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race")
+#   mergeysub$`Participant ID` <- as.factor(mergeysub$`Participant ID`)
+#   mergeysub$`site_name` <- as.factor(mergeysub$`site_name`)
+#   mergeysub$`diagnosis` <- as.factor(mergeysub$diagnosis)
+#   mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ `", randName,"` + consent_age + sex + race + (1|`Participant ID`) + (1|`site_name`)")), data = mergeysub, family = "binomial")
+#   # mymod <- glm(as.formula(paste0("diagnosis ~ `", randName,"` + consent_age + sex + race + (1|`Participant ID`) + (1|`site_name`)")), data = mergeysub, family = "binomial")
+#   mymodsum <- summary(mymod)
+#   featureNames[i] <- randName
+#   betas[i] <- mymodsum$coefficients[2,1]
+#   pvals[i] <- mymodsum$coefficients[2,4]
+#   # validate on testing set
+#   # if(mymodsum$coefficients[2,4] < 0.05){
+#   #   print(randName)
+#   #   print(cor(mergeytest$diagnosis, predict(mymod, mergeytest)))
+#   # }
+#   # Sys.sleep(1)
+#   # summary(mymod)
+#   # print(randName)
+#   # print(mymodsum$aic)
+# }
+# 
+# # multiple test p value for significance (bonferoni)
+# # bonfsigthresh <- 0.05/(nforloop)
+# bonfsigthresh <- 0.05
+# # make dataframe
+# tenResults <- as.data.frame(cbind(featureNames,betas,pvals))
+# tenResults$featureNames <- as.character(tenResults$featureNames)
+# tenResults$betas <- as.numeric(tenResults$betas)
+# tenResults$pvals <- as.numeric(tenResults$pvals)
+# # tenResults <- tenResults %>% separate(featureNames,into=c("kingdom","phylum","class","order","family","genus","species"),convert=TRUE,sep="\\|")
+# 
+# # column for plot colors
+# tenResults$mycolors <- NA
+# tenResults$mycolors[tenResults$pvals < bonfsigthresh] <- "sig"
+# tenResults$mycolors[tenResults$pvals >= bonfsigthresh] <- "notsig"
+# tenResults$mycolors <- as.factor(tenResults$mycolors)
+# 
+# # column for plot labels
+# tenResults$delabels <- NA
+# tenResults$delabels[tenResults$pvals < bonfsigthresh] <- tenResults$featureNames[tenResults$pvals < bonfsigthresh]
+# tenResults$delabels[tenResults$pvals >= bonfsigthresh] <- NA
+# tenResults$delabels <- as.character(tenResults$delabels)
+# 
+# # make volcano plot
+# bplot <- ggplot(aes(x = betas, y = -log10(pvals), col=mycolors, label=delabels), data = tenResults) +
+#   # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
+#   geom_point() +
+#   theme_minimal() +
+#   geom_text()
+# bplot
+# 
+# # extract the features that were significant and run a glm on the full model
+# sigFeatures <- tenResults$featureNames[tenResults$mycolors == "sig"]
+df_bestglm <- as.data.frame(traindf[,c(lassoFeatures)])
+df_bestglm$diagnosis <- as.factor(as.character(df_bestglm$diagnosis))
+summary(df_bestglm$diagnosis)
 
-# extract the features that were significant and run a glm on the full model
-sigFeatures <- tenResults$featureNames[tenResults$mycolors == "sig"]
-df_bestglm <- mergey[,c(sigFeatures,"diagnosis")]
-mymod <- glm(as.formula(paste0("diagnosis ~ .")), data = df_bestglm, family = "binomial")
+varlist2 <- names(df_bestglm)[which(names(df_bestglm) %ni% c("diagnosis", "Participant_ID"))]
+# varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
+varstring2 <- paste0(varlist2, collapse = " + ", sep = "")
+
+mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Participant_ID)")), 
+             data = df_bestglm, 
+             family = binomial)
 mymodsum <- summary(mymod)
 # prediction on reserved validation samples
-pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(mymod, mergeytest))); colnames(pred_df) <- c("actual", "predicted")
+pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(mymod, mergeytest, allow.new.levels = TRUE))); colnames(pred_df) <- c("actual", "predicted")
 pred_df$actual <- as.factor(pred_df$actual)
 # make a violin plot of the prediction
 ggplot(data = pred_df, aes(x = actual, y = predicted))+
@@ -518,37 +389,37 @@ ggplot(data = pred_df, aes(x = actual, y = predicted))+
   xlab("Actual Diagnosis")
 
 
-# bestglm
-# function begins with a data frame containing explanatory variables and response variables. 
-# The response variable should be in the last column. 
-# Varieties of goodness-of-fit criteria can be specified in the IC argument.
-# bestglm can only handle 15 variables.
-subfeats <- sample(names(df_bestglm), 14)
-subfeats <- subfeats[which(subfeats != "diagnosis")]; subfeats <- c(subfeats, "diagnosis")
-bglm <- bestglm::bestglm(df_bestglm[,subfeats], family = binomial, IC = "BIC")
-# prediction on reserved validation samples
-pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(bglm$BestModel, mergeytest))); colnames(pred_df) <- c("actual", "predicted")
-pred_df$actual <- as.factor(pred_df$actual)
-# make a violin plot of the prediction
-ggplot(data = pred_df, aes(x = actual, y = predicted))+
-  scale_fill_viridis_d( option = "D")+
-  theme_dark()+
-  geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
-  geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
-  theme(plot.title = element_text(hjust = 0.5))+
-  # theme(axis.title.x = element_text(size=14))+
-  theme(axis.text.x = element_text(colour = "black"))+
-  theme(axis.text.y = element_text(colour = "black"))+
-  theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
-  theme(panel.grid.major.x = element_blank())+
-  theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
-  # labs(title = addToTitle)+
-  ylab("Predicted Diagnosis")+
-  xlab("Actual Diagnosis")
-
-
-# stepAIC: Choose a model by AIC in a Stepwise Algorithm
-# MASS::stepAIC(df_bestglm, scope = as.formula(paste0("diagnosis ~ .")), direction = c("both"))
+# # bestglm
+# # function begins with a data frame containing explanatory variables and response variables. 
+# # The response variable should be in the last column. 
+# # Varieties of goodness-of-fit criteria can be specified in the IC argument.
+# # bestglm can only handle 15 variables.
+# subfeats <- sample(names(df_bestglm), 14)
+# subfeats <- subfeats[which(subfeats != "diagnosis")]; subfeats <- c(subfeats, "diagnosis")
+# bglm <- bestglm::bestglm(df_bestglm[,subfeats], family = binomial, IC = "BIC")
+# # prediction on reserved validation samples
+# pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(bglm$BestModel, mergeytest))); colnames(pred_df) <- c("actual", "predicted")
+# pred_df$actual <- as.factor(pred_df$actual)
+# # make a violin plot of the prediction
+# ggplot(data = pred_df, aes(x = actual, y = predicted))+
+#   scale_fill_viridis_d( option = "D")+
+#   theme_dark()+
+#   geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
+#   geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
+#   theme(plot.title = element_text(hjust = 0.5))+
+#   # theme(axis.title.x = element_text(size=14))+
+#   theme(axis.text.x = element_text(colour = "black"))+
+#   theme(axis.text.y = element_text(colour = "black"))+
+#   theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
+#   theme(panel.grid.major.x = element_blank())+
+#   theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
+#   # labs(title = addToTitle)+
+#   ylab("Predicted Diagnosis")+
+#   xlab("Actual Diagnosis")
+# 
+# 
+# # stepAIC: Choose a model by AIC in a Stepwise Algorithm
+# # MASS::stepAIC(df_bestglm, scope = as.formula(paste0("diagnosis ~ .")), direction = c("both"))
 
 
 
