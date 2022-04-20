@@ -90,7 +90,7 @@ training_metadata[training_metadata==""] <- NA
 isna <- sapply(training_metadata, function(x) sum(is.na(x)))
 isna[isna < 100]
 summary(training_metadata$diagnosis)
-training_metadata <- as.data.frame(training_metadata[,c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race")])
+training_metadata <- as.data.frame(training_metadata[,c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")])
 training_metadata$diagnosis <- as.character(training_metadata$diagnosis)
 training_metadata$diagnosis[training_metadata$diagnosis == "UC"] <- 1
 training_metadata$diagnosis[training_metadata$diagnosis == "CD"] <- 1
@@ -107,7 +107,7 @@ testing_metadata[testing_metadata==""] <- NA
 isna <- sapply(testing_metadata, function(x) sum(is.na(x)))
 isna[isna < 100]
 summary(testing_metadata$diagnosis)
-testing_metadata <- as.data.frame(testing_metadata[,c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race")])
+testing_metadata <- as.data.frame(testing_metadata[,c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")])
 testing_metadata$diagnosis <- as.character(testing_metadata$diagnosis)
 testing_metadata$diagnosis[testing_metadata$diagnosis == "UC"] <- 1
 testing_metadata$diagnosis[testing_metadata$diagnosis == "CD"] <- 1
@@ -242,7 +242,7 @@ mergey_colsd <- apply(mergey[complete.cases(mergey),grep("s__", names(mergey), i
 hist(as.numeric(mergeytest_colsd))
 hist(as.numeric(mergey_colsd))
 toKeep <- c(intersect(c(names(mergeytest_colsd)[which(mergeytest_colsd > 0.1)]), c(names(mergey_colsd)[which(mergey_colsd > 0.1)])),
-            c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race")
+            c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")
             )
 length(toKeep)
 length(mergey_colsd)
@@ -253,7 +253,7 @@ mergey <- mergey[,which(names(mergey) %in% toKeep)]
 cn <- as.data.frame(colnames(mergey)); colnames(cn) <- c("cn")
 cn <- cn %>% separate(cn,into=c("junk","species"),convert=TRUE,sep="\\|s__")
 cn <- cn$species
-cn[is.na(cn)] <- c("Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race")
+cn[is.na(cn)] <- c("Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")
 head(cn,20)
 tail(cn,20)
 cn <- gsub(pattern = "\\[", replacement = "", cn)
@@ -282,14 +282,32 @@ dim(mergey)
 varlist <- cn[which(cn %ni% c("diagnosis", "Participant_ID"))]
 # varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
 varstring <- paste0(varlist, collapse = " + ", sep = "")
-lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)), 
-                 data = traindf,
-                 rnd = list(Participant_ID=~1), 
-                 lambda=100, 
+
+# numvariables <- c()
+# lambdavec <- seq(from = 70, to = 110, by = 5)
+# for(lambdy in lambdavec){
+#   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)), 
+#                    data = traindf,
+#                    rnd = list(Participant_ID=~1), 
+#                    lambda=lambdy, 
+#                    family = binomial(link = "logit"))
+#   summary(lm1)
+#   lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
+#   lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
+#   lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
+#   numvariables <- c(numvariables, length(lassoFeatures))
+# }
+# plot(x = lambdavec, y = numvariables)
+
+lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
+                 data = traindf, 
+                 rnd = list(Participant_ID=~1),
+                 lambda=100,
                  family = binomial(link = "logit"))
 summary(lm1)
 lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
-lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
+lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)", "sexMale")]
+# lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
 lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race"))
 
 # ## run logistic regression for each feature --###################################
@@ -302,8 +320,8 @@ lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnos
 # for(i in sample(1:nforloop,10)){
 #   # randName <- names(mergey)[sample(1:length(names(mergey)),1)]
 #   randName <- names(mergey)[i]
-#   mergeysub <- mergey[,c(randName, c("Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race"))]
-#   colnames(mergeysub) <- c(randName, "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race")
+#   mergeysub <- mergey[,c(randName, c("Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))]
+#   colnames(mergeysub) <- c(randName, "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")
 #   mergeysub$`Participant ID` <- as.factor(mergeysub$`Participant ID`)
 #   mergeysub$`site_name` <- as.factor(mergeysub$`site_name`)
 #   mergeysub$`diagnosis` <- as.factor(mergeysub$diagnosis)
@@ -356,6 +374,10 @@ lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnos
 # 
 # # extract the features that were significant and run a glm on the full model
 # sigFeatures <- tenResults$featureNames[tenResults$mycolors == "sig"]
+
+## Prediction Boxplot and AUC ######################################################
+
+
 df_bestglm <- as.data.frame(traindf[,c(lassoFeatures)])
 df_bestglm$diagnosis <- as.factor(as.character(df_bestglm$diagnosis))
 summary(df_bestglm$diagnosis)
@@ -369,7 +391,7 @@ mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Partici
              family = binomial)
 mymodsum <- summary(mymod)
 # prediction on reserved validation samples
-pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(mymod, mergeytest, allow.new.levels = TRUE))); colnames(pred_df) <- c("actual", "predicted")
+pred_df <- as.data.frame(cbind(mergeytest$diagnosis, scale(predict(mymod, mergeytest, allow.new.levels = T)))); colnames(pred_df) <- c("actual", "predicted")
 pred_df$actual <- as.factor(pred_df$actual)
 # make a violin plot of the prediction
 ggplot(data = pred_df, aes(x = actual, y = predicted))+
@@ -385,504 +407,52 @@ ggplot(data = pred_df, aes(x = actual, y = predicted))+
   theme(panel.grid.major.x = element_blank())+
   theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
   # labs(title = addToTitle)+
-  ylab("Predicted Diagnosis")+
+  ylab("Score")+
   xlab("Actual Diagnosis")
 
+library(pROC)
+caseControlGLM <- glm(as.formula(pred_df$actual ~ pred_df$predicted), data = pred_df, family = "binomial", na.action = na.omit)
+predpr <- predict(caseControlGLM, mergeytest, allow.new.levels = T, type = c("response"))
+caseControlroccurve <- pROC::roc(mergeytest$diagnosis ~ predpr, quiet=T, plot=T)
+caseControlroccurveCI <- pROC::roc(mergeytest$diagnosis ~ predpr, ci=T, quiet=T)
+# caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
 
-# # bestglm
-# # function begins with a data frame containing explanatory variables and response variables. 
-# # The response variable should be in the last column. 
-# # Varieties of goodness-of-fit criteria can be specified in the IC argument.
-# # bestglm can only handle 15 variables.
-# subfeats <- sample(names(df_bestglm), 14)
-# subfeats <- subfeats[which(subfeats != "diagnosis")]; subfeats <- c(subfeats, "diagnosis")
-# bglm <- bestglm::bestglm(df_bestglm[,subfeats], family = binomial, IC = "BIC")
-# # prediction on reserved validation samples
-# pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(bglm$BestModel, mergeytest))); colnames(pred_df) <- c("actual", "predicted")
-# pred_df$actual <- as.factor(pred_df$actual)
-# # make a violin plot of the prediction
-# ggplot(data = pred_df, aes(x = actual, y = predicted))+
-#   scale_fill_viridis_d( option = "D")+
-#   theme_dark()+
-#   geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
-#   geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
-#   theme(plot.title = element_text(hjust = 0.5))+
-#   # theme(axis.title.x = element_text(size=14))+
-#   theme(axis.text.x = element_text(colour = "black"))+
-#   theme(axis.text.y = element_text(colour = "black"))+
-#   theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
-#   theme(panel.grid.major.x = element_blank())+
-#   theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
-#   # labs(title = addToTitle)+
-#   ylab("Predicted Diagnosis")+
-#   xlab("Actual Diagnosis")
-# 
-# 
-# # stepAIC: Choose a model by AIC in a Stepwise Algorithm
-# # MASS::stepAIC(df_bestglm, scope = as.formula(paste0("diagnosis ~ .")), direction = c("both"))
-
-
-
-
-
-
-
-
-## RANDOM FORESTS USING VSURF ######################################################
-# User code starts here
-stopifnot(require(VSURF))
-stopifnot(require(tidyverse))
-stopifnot(require(doParallel))
-stopifnot(require(doFuture))
-stopifnot(require(caret))
-stopifnot(require(e1071))
-stopifnot(require(randomForest))
-stopifnot(require(magrittr))
-stopifnot(require(dplyr))
-
-unregister_dopar <- function() {
-  env <- foreach:::.foreachGlobals
-  rm(list=ls(name=env), pos=env)
+caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
+caseControlOR <- exp(cbind("Odds ratio" = coef(caseControlGLM), confint.default(caseControlGLM, level = 0.95)))
+if (as.numeric(strsplit(caseControlp,"")[[1]][1]) == 1){
+  caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
+}else{
+  caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", 10*as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
+}  
+if (as.numeric(caseControlp) >= 0.001){
+  caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p = ", formatC(as.numeric(caseControlp), format = "g"))
 }
-'%ni%' <- Negate('%in%')
+caseControlAUCsummary <- paste0("AUC [95% CI] = ", format(round(as.numeric(caseControlroccurve$auc), 2), nsmall = 2), " [", format(round(as.numeric(caseControlroccurveCI$ci[1]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlroccurveCI$ci[3]), 2),nsmal = 2),"]")
 
-#---load in things ---#########################################################################################################################################################################
-data <- df_bestglm
-data_testing <- mergeytest
+caseControlpthresh
+caseControlAUCsummary
 
-data <- data[complete.cases(data),]
 
-# R CMD BATCH --vanilla '--args fss' training.R output/training_diagnosis.Rout
 
-#---RF setup ---#########################################################################################################################################################################
+# ## Load in MixRF and run MixRF ######################################################
 
-outcomeVariable <- "diagnosis"
+# install.packages("MixRF")
+library(MixRF)
+myX <- as.data.frame(df_bestglm[,names(df_bestglm) %ni% c("diagnosis", "Participant_ID")])
 
-num_cores = detectCores() - 1
-print(
-  paste0(
-    'Number of cores being used = ',
-    num_cores,
-    ", of possible ",
-    detectCores(),
-    " cores"
-  )
+myMixRF <- MixRF::MixRF(
+  Y = as.numeric(pull(df_bestglm, diagnosis)),
+  X = myX,
+  random = "(1|Participant_ID)",
+  MaxIterations = 10,
+  data = df_bestglm
 )
-# registerDoParallel(num_cores)
 
-# registerDoFuture()
-# plan(multiprocess, workers = num_cores)
+varImp(myMixRF$forest)
 
-x <- data %>% dplyr::select(-diagnosis) #%>% dplyr::select(hosplos, gcs_use, admittoicudc1)
-y <- data %>% dplyr::select(diagnosis)
-
-dim(data)
-x <- as.data.frame(x)
-y <- y$diagnosis
-
-number_trees = 2000
-mtry_best <- max(floor(ncol(x) / 3), 1)
-# mtry_best <- max(floor(ncol(x) / 2), 1)
-
-# bestMtry <- randomForest::tuneRF(
-#   x,
-#   y,
-#   stepFactor = 1,
-#   improve = 1e-5,
-#   ntree = number_trees,
-#   na.action = na.omit
-# )
-# bestMtry <- as.data.frame(bestMtry)
-# mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
-
-# # data(iris)
-# # x <- iris[,1:4]
-# # y <- iris[,5]
-#
-# # vozone <- VSURF(diagnosis ~ ., data = data, na.action = na.omit)
-# # summary(vozone)
-#
-# #---THRESHOLDING ---#########################################################################################################################################################################
-results.vsurf_thresh <- VSURF::VSURF_thres(
-  x = x,
-  y = y,
-  na.action = na.omit,
-  mtry = mtry_best,
-  ntree = number_trees,
-  parallel = TRUE,
-  verbose = TRUE,
-  ncores = num_cores,
-  # nmj = 1,
-  nfor.thres = 50,
-  nmin = 1
-)
-length(results.vsurf_thresh$varselect.thres)
-# save.image(
-#   file = paste0("thresh_save",
-#                 "_VSURFkeepers.Rdata")
-# )
-# load(paste0("./InputData/",
-#             "thresh_save",
-#             "_VSURFkeepers.Rdata"))
-#---INTERPRETATION ---#########################################################################################################################################################################
-results.vsurf_interp <- VSURF::VSURF_interp(
-  x,
-  y,
-  na.action = na.omit,
-  vars =  results.vsurf_thresh$varselect.thres,
-  ntree = number_trees,
-  parallel = TRUE,
-  verbose = TRUE,
-  ncores = num_cores,
-  nfor.interp = 25, #25,
-  nsd = 1
-)
-length(results.vsurf_interp$varselect.interp)
-# save.image(
-#   file = paste0("interp_save",
-#                 "_VSURFkeepers.Rdata")
-# )
-#---PREDICTION ---#########################################################################################################################################################################
-results.vsurf_pred <- VSURF::VSURF_pred(
-  x,
-  y,
-  na.action = na.omit,
-  err.interp = results.vsurf_interp$err.interp,
-  varselect.interp = results.vsurf_interp$varselect.interp,
-  ntree = number_trees,
-  parallel = TRUE,
-  verbose = TRUE,
-  ncores = num_cores,
-  nfor.pred = 25,
-  nmj = 1 # increasing the value of nmj leads to selection of fewer variables:
-)
-length(results.vsurf_pred$varselect.pred)
-# save.image(
-#   file = paste0("pred_save",
-#                 "_VSURFkeepers.Rdata")
-# )
-
-results.vsurf <- results.vsurf_pred
-results.vsurf.OG <- results.vsurf
-
-nVarInterp <-
-  length(colnames(data[, results.vsurf_interp$varselect.interp]))
-nVarPred <-
-  length(colnames(data[, results.vsurf_pred$varselect.pred]))
-
-# look at results of VSURF
-summary(results.vsurf)
-plot(results.vsurf_thresh)
-plot(results.vsurf_interp)
-plot(results.vsurf_pred)
-results.vsurf_thresh$varselect.thres
-results.vsurf_interp$varselect.interp
-results.vsurf_pred$varselect.pred
-
-# print the reduced number of variables that should be considered in model
-colnames(x)[results.vsurf_thresh$varselect.thres]
-colnames(x)[results.vsurf_interp$varselect.interp]
-colnames(x)[results.vsurf_pred$varselect.pred] # The final list of variables to be included according to the VSURF methodology.
-VSURF_thres_keepers <-
-  colnames(x)[results.vsurf_thresh$varselect.thres]
-VSURF_interp_keepers <-
-  colnames(x)[results.vsurf_interp$varselect.interp]
-VSURF_pred_keepers <-
-  colnames(x)[results.vsurf_pred$varselect.pred]
-
-# VSURF_thres_keepers <- c(VSURF_thres_keepers, "age", "female")
-# VSURF_interp_keepers <- c(VSURF_interp_keepers, "age", "female")
-# VSURF_pred_keepers <- c(VSURF_pred_keepers, "age", "female")
-
-# # if one of the steps only produced 1 variable, use the previous VSURF list of names
-# if (length(VSURF_pred_keepers) > 1) {
-#   training_ready_sub_vsurf_result = dplyr::select(data,
-#                                                   c(outcomeVariable, VSURF_pred_keepers))
-#   training_ready_sub_vsurf_result_varImp = dplyr::select(data,
-#                                                          c(outcomeVariable, VSURF_interp_keepers))
-# } else if (length(VSURF_pred_keepers) <= 1 &&
-#            length(VSURF_interp_keepers) > 1) {
-#   training_ready_sub_vsurf_result = dplyr::select(data,
-#                                                   c(outcomeVariable, VSURF_interp_keepers))
-#   training_ready_sub_vsurf_result_varImp = dplyr::select(data,
-#                                                          c(outcomeVariable, VSURF_interp_keepers))
-# } else if (length(VSURF_pred_keepers) <= 1 &&
-#            length(VSURF_interp_keepers) <= 1) {
-#   training_ready_sub_vsurf_result = dplyr::select(data,
-#                                                   c(outcomeVariable, VSURF_thres_keepers))
-#   training_ready_sub_vsurf_result_varImp = dplyr::select(data,
-#                                                          c(outcomeVariable, VSURF_thres_keepers))
-# }
-
-training_ready_sub_vsurf_result = dplyr::select(data,
-                                                c(outcomeVariable, VSURF_pred_keepers))
-training_ready_sub_vsurf_result_varImp = dplyr::select(data,
-                                                       c(outcomeVariable, VSURF_interp_keepers))
-training_ready_sub_vsurf_result_tresh = dplyr::select(data,
-                                                      c(outcomeVariable, VSURF_thres_keepers))
-
-glimpse(training_ready_sub_vsurf_result)
-glimpse(training_ready_sub_vsurf_result_varImp)
-glimpse(training_ready_sub_vsurf_result_tresh)
-
-
-
-# #---RF All Variables---#########################################################################################################################################################################
-
-x <- x
-x <- x %>% dplyr::select(-diagnosis) 
-y <- y
-
-if (length(data) > 2) {
-  bestMtry <-
-    randomForest::tuneRF(
-      x,
-      y,
-      stepFactor = 1,
-      improve = 1e-5,
-      ntree = number_trees,
-      na.action = nasaction
-    )
-  bestMtry <- as.data.frame(bestMtry)
-  mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
-  # mtry_best <- max(floor(ncol(x)/3), 1)
-} else{
-  mtry_best <- 1
-}
-tunegrid <- expand.grid(
-  .mtry = mtry_best,
-  .splitrule = c('gini'),
-  .min.node.size = c(5, 10, 20)
-)
-control <- caret::trainControl(method = "cv",
-                               number = 3,
-                               # repeats=3,
-                               # verboseIter = T,
-                               # classProbs = T,
-                               allowParallel = TRUE,
-                               verboseIter = TRUE)
-mod_formula <- as.formula(paste(outcomeVariable, "~", "."))
-unregister_dopar()
-rf.mod.ALL <- caret::train(
-  mod_formula,
-  data = data,
-  # data = training_ready_sub_vsurf_result_varImp,
-  # data = training_ready_sub_vsurf_result,
-  # method = 'ranger',
-  method = 'rf',
-  na.action = na.omit,
-  keep.inbag = TRUE,
-  replace = TRUE,
-  # importance = "permutation", #***
-  trControl = control,
-  num.threads = num_cores
-)
-varImp(rf.mod.ALL)
-
-# #---RF thresholding step ---#########################################################################################################################################################################
-
-x <- training_ready_sub_vsurf_result_tresh
-x <- x %>% dplyr::select(-diagnosis) 
-y <- y
-
-if (length(data) > 2) {
-  bestMtry <-
-    randomForest::tuneRF(
-      x,
-      y,
-      stepFactor = 1,
-      improve = 1e-5,
-      ntree = number_trees,
-      na.action = nasaction
-    )
-  bestMtry <- as.data.frame(bestMtry)
-  mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
-  # mtry_best <- max(floor(ncol(x)/3), 1)
-} else{
-  mtry_best <- 1
-}
-tunegrid <- expand.grid(
-  .mtry = mtry_best,
-  .splitrule = c('gini'),
-  .min.node.size = c(5, 10, 20)
-)
-control <- caret::trainControl(method = "cv",
-                               number = 3,
-                               # repeats=3,
-                               # verboseIter = T,
-                               # classProbs = T,
-                               allowParallel = TRUE,
-                               verboseIter = TRUE)
-mod_formula <- as.formula(paste(outcomeVariable, "~", "."))
-unregister_dopar()
-rf.mod.THRESH <- caret::train(
-  mod_formula,
-  data = training_ready_sub_vsurf_result_tresh,
-  # method = 'ranger',
-  method = 'rf',
-  na.action = na.omit,
-  keep.inbag = TRUE,
-  replace = TRUE,
-  # importance = "permutation", #***
-  trControl = control,
-  num.threads = num_cores
-)
-varImp(rf.mod.THRESH)
-
-#---RF Interpretation step---#########################################################################################################################################################################
-
-x <- training_ready_sub_vsurf_result_varImp
-x <- x %>% dplyr::select(-diagnosis) 
-y <- y
-
-if (length(data) > 2) {
-  bestMtry <-
-    randomForest::tuneRF(
-      x,
-      y,
-      stepFactor = 1,
-      improve = 1e-5,
-      ntree = number_trees,
-      na.action = nasaction
-    )
-  bestMtry <- as.data.frame(bestMtry)
-  mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
-  # mtry_best <- max(floor(ncol(x)/3), 1)
-} else{
-  mtry_best <- 1
-}
-tunegrid <- expand.grid(
-  .mtry = mtry_best,
-  .splitrule = c('gini'),
-  .min.node.size = c(5, 10, 20)
-)
-control <- caret::trainControl(method = "cv",
-                               number = 3,
-                               # repeats=3,
-                               # verboseIter = T,
-                               # classProbs = T,
-                               allowParallel = TRUE,
-                               verboseIter = TRUE)
-mod_formula <- as.formula(paste(outcomeVariable, "~", "."))
-unregister_dopar()
-rf.mod.INTERP <- caret::train(
-  mod_formula,
-  data = training_ready_sub_vsurf_result_varImp,
-  # method = 'ranger',
-  method = 'rf',
-  na.action = na.omit,
-  keep.inbag = TRUE,
-  replace = TRUE,
-  # importance = "permutation", #***
-  trControl = control,
-  num.threads = num_cores
-)
-varImp(rf.mod.INTERP)
-
-df_tmp <- varImp(rf.mod.INTERP)
-df_tmp2 <- as.data.frame(df_tmp$importance); colnames(df_tmp2) <- c("imp")
-df2 <- df_tmp2 %>%
-  tibble::rownames_to_column() %>%
-  dplyr::rename("variable" = rowname) %>%
-  dplyr::arrange(imp) %>%
-  dplyr::mutate(variable = forcats::fct_inorder(variable))
-plot_varimp <- ggplot2::ggplot(df2) +
-  geom_segment(
-    aes(
-      x = variable,
-      y = 0,
-      xend = variable,
-      yend = imp
-    ),
-    size = 1.5,
-    alpha = 0.7
-  ) +
-  geom_point(aes(x = variable, y = imp, col = variable),
-             size = 4,
-             show.legend = F) +
-  coord_flip() +
-  labs(y = "Importance", x = NULL, title = "") +
-  theme_bw() +
-  theme(legend.title = element_text(size = 14)) +
-  theme(
-    axis.text.x = element_text(
-      color = "black",
-      size = 13,
-      angle = 0,
-      hjust = .5,
-      vjust = .5
-    ),
-    axis.text.y = element_text(
-      color = "black",
-      size = length(unique(df2$variable))*1/6,
-      angle = 0
-    ),
-    axis.title.x = element_text(
-      color = "black",
-      size = 13,
-      angle = 0
-    ),
-    axis.title.y = element_text(
-      color = "black",
-      size = 13,
-      angle = 90
-    )
-  )
-plot_varimp
-
-#---RF Prediction step---#########################################################################################################################################################################
-
-x <- training_ready_sub_vsurf_result
-x <- x %>% dplyr::select(-diagnosis) 
-y <- y
-
-if (length(data) > 2) {
-  bestMtry <-
-    randomForest::tuneRF(
-      x,
-      y,
-      stepFactor = 1,
-      improve = 1e-5,
-      ntree = number_trees,
-      na.action = nasaction
-    )
-  bestMtry <- as.data.frame(bestMtry)
-  mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
-  # mtry_best <- max(floor(ncol(x)/3), 1)
-} else{
-  mtry_best <- 1
-}
-tunegrid <- expand.grid(
-  .mtry = mtry_best,
-  .splitrule = c('gini'),
-  .min.node.size = c(5, 10, 20)
-)
-control <- caret::trainControl(method = "cv",
-                               number = 3,
-                               # repeats=3,
-                               # verboseIter = T,
-                               # classProbs = T,
-                               allowParallel = TRUE,
-                               verboseIter = TRUE)
-mod_formula <- as.formula(paste(outcomeVariable, "~", "."))
-unregister_dopar()
-rf.mod.PRED <- caret::train(
-  mod_formula,
-  data = training_ready_sub_vsurf_result,
-  # method = 'ranger',
-  method = 'rf',
-  na.action = na.omit,
-  keep.inbag = TRUE,
-  replace = TRUE,
-  # importance = "permutation", #***
-  trControl = control,
-  num.threads = num_cores
-)
-varImp(rf.mod.PRED)
-
-df_tmp <- varImp(rf.mod.PRED)
-df_tmp2 <- as.data.frame(df_tmp$importance); colnames(df_tmp2) <- c("imp")
-df2 <- df_tmp2 %>%
+df_tmp <- varImp(myMixRF$forest)
+newdf <- as.data.frame(df_tmp$Overall); colnames(newdf) <- c("imp"); rownames(newdf) <- names(myX)
+df2 <- newdf %>%
   tibble::rownames_to_column() %>%
   dplyr::rename("variable" = rowname) %>%
   dplyr::arrange(imp) %>%
@@ -931,22 +501,35 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
   )
 plot_varimp2
 
-#---simple glm---#########################################################################################################################################################################
 
-print(paste0("diagnosis ~ ", paste(VSURF_interp_keepers, sep = "", collapse = " + ")))
-myglm <- glm(as.formula(paste0("diagnosis ~ ", paste(VSURF_interp_keepers, sep = "", collapse = " + "))),
-             data = data, na.action = na.omit, family = binomial()
-)
+levels(mergeytest[["sex"]])
+levels(myX[["sex"]])
+levels(mergeytest[["site_name"]])
+levels(myX[["site_name"]])
+levels(mergeytest[["race"]])
+levels(myX[["race"]])
 
-#---evaluate prediction---#########################################################################################################################################################################
+predictionDF <- mergeytest[complete.cases(mergeytest),]
+predictionDF$consent_age <- as.factor(as.character(predictionDF$consent_age))
+common <- names(myX)[names(myX) %in% names(predictionDF)]
+predictionDF[common] <- lapply(common, function(x) {
+  match.fun(paste0("as.", class(myX[[x]])))(predictionDF[[x]])
+})
 
-# postPred_RF <- as.data.frame(predict(rf.mod.ALL, newdata = mergeytest))
-# postPred_RF <- as.data.frame(predict(rf.mod.THRESH, newdata = mergeytest))
-# postPred_RF <- as.data.frame(predict(rf.mod.INTERP, newdata = mergeytest))
-postPred_RF <- as.data.frame(predict(rf.mod.PRED, newdata = mergeytest))
+str(predictionDF[,common])
+str(myX[,common])
+
+myX$diagnosis <- as.numeric(pull(df_bestglm, diagnosis))
+predictionDF <- predictionDF[,c(common,"diagnosis")]
+predictionDF <- rbind(myX[1, ] , predictionDF)
+predictionDF <- predictionDF[-1,]
+
+# predictionDF$diagnosis <- as.factor(predictionDF$diagnosis)
+
+postPred_RF <- as.data.frame(predict(myMixRF$forest, newdata = predictionDF), allow.new.levels = T)
 # postPred_RF <- as.data.frame(predict(myglm, newdata = mergeytest)); postPred_RF <- ifelse(postPred_RF[,1] > 0.25, "1", "0")
 
-comparePrediction <- cbind(as.character(mergeytest$diagnosis), postPred_RF)
+comparePrediction <- cbind(as.character(predictionDF$diagnosis), postPred_RF)
 comparePrediction <- as.data.frame(comparePrediction)
 colnames(comparePrediction) <- c("actual", "predicted")
 (comparePrediction$actual == comparePrediction$prediction)
@@ -969,31 +552,717 @@ ggplot(data = comparePrediction, aes(x = actual, y = predicted))+
   ylab("Predicted Diagnosis")+
   xlab("Actual Diagnosis")
 
-print(VSURF_thres_keepers)
-print(VSURF_interp_keepers)
-print(VSURF_pred_keepers)
+# ## old code ######################################################
 
-# rtn <- rf.mod.PRED
-rtn <- rf.mod.INTERP #the interpretation set of selected parameters seems to do the best 
-# rtn <- rf.mod.ALL
-# rtn <- myglm
+# set.seed(123)
+# data <- DataLongGenerator(n=20) # Generate the data composed by n=20 individuals.
+# # Train a SMERF model on the generated data. Should take ~ 50 seconds
+# # The data are generated with a Brownian motion,
+# # so we use the parameter sto="BM" to specify a Brownian motion as stochastic process
+# smerf <- MERF(X=data$X,Y=data$Y,Z=as.matrix(data$Z[,1]),id=data$id,time=data$time,mtry=2,ntree=500,sto="BM")
+# 
+# 
+# # install.packages("LongituRF")
+# library(LongituRF)
+# myX <- as.matrix(df_bestglm[,names(df_bestglm) %ni% c("diagnosis", "Participant_ID")])
+# rownames(myX) <- NULL
+# colnames(myX) <- NULL
+# myX <- myX[,1:5]
+# 
+# mydata <- list(
+#   X = myX,
+#   Y = as.numeric(pull(df_bestglm, diagnosis)),
+#   id = as.integer(as.factor(as.character((pull(df_bestglm, Participant_ID))))),
+#   Z = as.matrix(rep(1,nrow(df_bestglm))),
+#   time = as.numeric(sample(1:11,nrow(df_bestglm), replace = T))
+# )
+# 
+# ourMERF <- LongituRF::MERF(
+#   X = data.frame(mydata$X),
+#   Y = mydata$Y,
+#   id = mydata$id,
+#   Z = mydata$Z,
+#   iter = 100,
+#   mtry = ceiling(ncol(X)/3),
+#   ntree = 500,
+#   time = mydata$time,
+#   sto = "OrnUhl",
+#   delta = 0.001
+# )
+# 
+# ourMERF <- REEMforest(
+#   X = data.frame(mydata$X),
+#   Y = mydata$Y,
+#   id = mydata$id,
+#   Z = mydata$Z,
+#   iter = 100,
+#   mtry = ceiling(ncol(X)/3),
+#   ntree = 500,
+#   time = mydata$time,
+#   sto = "OrnUhl",
+#   delta = 0.001
+# )
 
-#---Look at effect size directions---#########################################################################################################################################################################
+# source("./MERF_Function.R")
+# MERF(
+#   xnam = varlist2,
+#   #xnam			#A charcter vector of p columns, corresponding to the names of the p fixed 
+#   # effect covariates (as they appear in the learning dataset).
+#   MERF.lDB = df_bestglm,
+#   #MERF.lDB 		#The learning dataset: a dataframe of N rows (i.e. N level-one observations) and (p+2) columns, 
+#   #where the column "cluster.id" corresponds to the variable uniquely identifying the n clusters (or level-two obervations), 
+#   #the column "Y" corresponds to the name of the continuous response variable,
+#   #and the other p columns correspond to the p fixed effects covariates.	
+#   ni = c(sum(df_bestglm$diagnosis == 0), sum(df_bestglm$diagnosis == 1)),
+#   #ni			#A vector of n columns, where ni[i] corresponds to the size of cluster i, 
+#   #for i = 1, ..., n (ATTENTION: should keep the same order as in MERF.lDB).
+#   Zi = list(which(names(df_bestglm) == "Participant_ID")),
+#   #Zi			#A list of n matrices Zi[[i]] of dimension (ni[i] X q), where  
+#   #Zi[[i]] corresponds to the q random effects covariates values of the ni[i] observations nested within cluster i, for i= 1, ..., n. 
+#   #Note that q=1 when there is only a random intercept, i.e. no random effect covariates.
+#   Yi = which(names(df_bestglm) == "diagnosis"),
+#   #Yi			#A list of n vectors Yi[i] of ni[i] rows, where 
+#   #Yi[i] corresponds to the response values of the ni[i] observations nested within cluster i, for i= 1, ..., n.
+#   
+#   #ntree			#ntree argument of randomForest function, i.e., number of trees to grow (e.g. 300).
+#   
+#   #mtry			#mtry argument of randomForest function, i.e., number of variables randomly sampled as candidates at each split (e.g. 3).
+#   
+#   #nodesize		#nodesize argument of randomForest function, i.e., minimum size of terminal nodes (e.g.5).
+#   
+#   #sigmasqzero = NULL	#Starting value of σ2, where the covariance matrix of the errors Ri = σ2Ini , for i = 1, ..., n. 
+#   #Default: if( is.null(sigmasqzero) ) sigmasqzero <- 1.
+#   
+#   #Dzero = NULL		#Starting value of the covariance matrix of the random effects. 
+#   #Default:
+#   #if( is.null(Dzero) ){
+#   #	Dzero <- diag(0.01,nrow=q,ncol=q)
+#   #}
+#   
+#   #bizero = NULL		#Starting values of the random effects: a list of n matrices of q × 1 unknown vector of random effects. 
+#   #Default:
+#   #if( is.null(bizero) ){
+#   #bizero <- list(); length(bizero)<- n
+#   #	for(i in 1:n) bizero[[i]] <- matrix(0,nrow=q,ncol=1)}
+#   #}
+#   
+#   #F.niter		#The number of iterations forced to avoid early stopping (e.g. 100).
+#   
+#   #max.niter		#Maximum number of iterations, in addition to the F.niter forced iterations (e.g. 300).
+#   
+#   #smallest.Jump.allowed 	#A given small value (e.g. 1e-4). 
+#   
+#   #verbose		#Logical. Should R report extra information on progress?
+#   
+#   
+# )
 
-sub_tenResults <- subset(tenResults, featureNames %in% VSURF_pred_keepers)
 
-# make volcano plot
-bplot2 <- ggplot(aes(x = betas, y = -log10(pvals), col=mycolors, label=delabels), data = sub_tenResults) +
-  # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
-  geom_point() +
-  theme_minimal() +
-  geom_text() +
-  geom_vline(xintercept = 0)
-bplot2
-
-#---make a regression tree---#########################################################################################################################################################################
-
-require(tree)
-mytree <- tree(diagnosis ~ ., data = training_ready_sub_vsurf_result)
-plot(mytree)
-text(mytree, pretty = 0, cex = .8)
+# # # bestglm
+# # # function begins with a data frame containing explanatory variables and response variables. 
+# # # The response variable should be in the last column. 
+# # # Varieties of goodness-of-fit criteria can be specified in the IC argument.
+# # # bestglm can only handle 15 variables.
+# # subfeats <- sample(names(df_bestglm), 14)
+# # subfeats <- subfeats[which(subfeats != "diagnosis")]; subfeats <- c(subfeats, "diagnosis")
+# # bglm <- bestglm::bestglm(df_bestglm[,subfeats], family = binomial, IC = "BIC")
+# # # prediction on reserved validation samples
+# # pred_df <- as.data.frame(cbind(mergeytest$diagnosis, predict(bglm$BestModel, mergeytest))); colnames(pred_df) <- c("actual", "predicted")
+# # pred_df$actual <- as.factor(pred_df$actual)
+# # # make a violin plot of the prediction
+# # ggplot(data = pred_df, aes(x = actual, y = predicted))+
+# #   scale_fill_viridis_d( option = "D")+
+# #   theme_dark()+
+# #   geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
+# #   geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
+# #   theme(plot.title = element_text(hjust = 0.5))+
+# #   # theme(axis.title.x = element_text(size=14))+
+# #   theme(axis.text.x = element_text(colour = "black"))+
+# #   theme(axis.text.y = element_text(colour = "black"))+
+# #   theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
+# #   theme(panel.grid.major.x = element_blank())+
+# #   theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
+# #   # labs(title = addToTitle)+
+# #   ylab("Predicted Diagnosis")+
+# #   xlab("Actual Diagnosis")
+# # 
+# # 
+# # # stepAIC: Choose a model by AIC in a Stepwise Algorithm
+# # # MASS::stepAIC(df_bestglm, scope = as.formula(paste0("diagnosis ~ .")), direction = c("both"))
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# ## RANDOM FORESTS USING VSURF ######################################################
+# # User code starts here
+# stopifnot(require(VSURF))
+# stopifnot(require(tidyverse))
+# stopifnot(require(doParallel))
+# stopifnot(require(doFuture))
+# stopifnot(require(caret))
+# stopifnot(require(e1071))
+# stopifnot(require(randomForest))
+# stopifnot(require(magrittr))
+# stopifnot(require(dplyr))
+# 
+# unregister_dopar <- function() {
+#   env <- foreach:::.foreachGlobals
+#   rm(list=ls(name=env), pos=env)
+# }
+# '%ni%' <- Negate('%in%')
+# 
+# #---load in things ---#########################################################################################################################################################################
+# data <- df_bestglm
+# data_testing <- mergeytest
+# 
+# data <- data[complete.cases(data),]
+# 
+# # R CMD BATCH --vanilla '--args fss' training.R output/training_diagnosis.Rout
+# 
+# #---RF setup ---#########################################################################################################################################################################
+# 
+# outcomeVariable <- "diagnosis"
+# 
+# num_cores = detectCores() - 1
+# print(
+#   paste0(
+#     'Number of cores being used = ',
+#     num_cores,
+#     ", of possible ",
+#     detectCores(),
+#     " cores"
+#   )
+# )
+# # registerDoParallel(num_cores)
+# 
+# # registerDoFuture()
+# # plan(multiprocess, workers = num_cores)
+# 
+# x <- data %>% dplyr::select(-diagnosis) #%>% dplyr::select(hosplos, gcs_use, admittoicudc1)
+# y <- data %>% dplyr::select(diagnosis)
+# 
+# dim(data)
+# x <- as.data.frame(x)
+# y <- y$diagnosis
+# 
+# number_trees = 2000
+# mtry_best <- max(floor(ncol(x) / 3), 1)
+# # mtry_best <- max(floor(ncol(x) / 2), 1)
+# 
+# # bestMtry <- randomForest::tuneRF(
+# #   x,
+# #   y,
+# #   stepFactor = 1,
+# #   improve = 1e-5,
+# #   ntree = number_trees,
+# #   na.action = na.omit
+# # )
+# # bestMtry <- as.data.frame(bestMtry)
+# # mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
+# 
+# # # data(iris)
+# # # x <- iris[,1:4]
+# # # y <- iris[,5]
+# #
+# # # vozone <- VSURF(diagnosis ~ ., data = data, na.action = na.omit)
+# # # summary(vozone)
+# #
+# # #---THRESHOLDING ---#########################################################################################################################################################################
+# results.vsurf_thresh <- VSURF::VSURF_thres(
+#   x = x,
+#   y = y,
+#   na.action = na.omit,
+#   mtry = mtry_best,
+#   ntree = number_trees,
+#   parallel = TRUE,
+#   verbose = TRUE,
+#   ncores = num_cores,
+#   # nmj = 1,
+#   nfor.thres = 50,
+#   nmin = 1
+# )
+# length(results.vsurf_thresh$varselect.thres)
+# # save.image(
+# #   file = paste0("thresh_save",
+# #                 "_VSURFkeepers.Rdata")
+# # )
+# # load(paste0("./InputData/",
+# #             "thresh_save",
+# #             "_VSURFkeepers.Rdata"))
+# #---INTERPRETATION ---#########################################################################################################################################################################
+# results.vsurf_interp <- VSURF::VSURF_interp(
+#   x,
+#   y,
+#   na.action = na.omit,
+#   vars =  results.vsurf_thresh$varselect.thres,
+#   ntree = number_trees,
+#   parallel = TRUE,
+#   verbose = TRUE,
+#   ncores = num_cores,
+#   nfor.interp = 25, #25,
+#   nsd = 1
+# )
+# length(results.vsurf_interp$varselect.interp)
+# # save.image(
+# #   file = paste0("interp_save",
+# #                 "_VSURFkeepers.Rdata")
+# # )
+# #---PREDICTION ---#########################################################################################################################################################################
+# results.vsurf_pred <- VSURF::VSURF_pred(
+#   x,
+#   y,
+#   na.action = na.omit,
+#   err.interp = results.vsurf_interp$err.interp,
+#   varselect.interp = results.vsurf_interp$varselect.interp,
+#   ntree = number_trees,
+#   parallel = TRUE,
+#   verbose = TRUE,
+#   ncores = num_cores,
+#   nfor.pred = 25,
+#   nmj = 1 # increasing the value of nmj leads to selection of fewer variables:
+# )
+# length(results.vsurf_pred$varselect.pred)
+# # save.image(
+# #   file = paste0("pred_save",
+# #                 "_VSURFkeepers.Rdata")
+# # )
+# 
+# results.vsurf <- results.vsurf_pred
+# results.vsurf.OG <- results.vsurf
+# 
+# nVarInterp <-
+#   length(colnames(data[, results.vsurf_interp$varselect.interp]))
+# nVarPred <-
+#   length(colnames(data[, results.vsurf_pred$varselect.pred]))
+# 
+# # look at results of VSURF
+# summary(results.vsurf)
+# plot(results.vsurf_thresh)
+# plot(results.vsurf_interp)
+# plot(results.vsurf_pred)
+# results.vsurf_thresh$varselect.thres
+# results.vsurf_interp$varselect.interp
+# results.vsurf_pred$varselect.pred
+# 
+# # print the reduced number of variables that should be considered in model
+# colnames(x)[results.vsurf_thresh$varselect.thres]
+# colnames(x)[results.vsurf_interp$varselect.interp]
+# colnames(x)[results.vsurf_pred$varselect.pred] # The final list of variables to be included according to the VSURF methodology.
+# VSURF_thres_keepers <-
+#   colnames(x)[results.vsurf_thresh$varselect.thres]
+# VSURF_interp_keepers <-
+#   colnames(x)[results.vsurf_interp$varselect.interp]
+# VSURF_pred_keepers <-
+#   colnames(x)[results.vsurf_pred$varselect.pred]
+# 
+# # VSURF_thres_keepers <- c(VSURF_thres_keepers, "age", "female")
+# # VSURF_interp_keepers <- c(VSURF_interp_keepers, "age", "female")
+# # VSURF_pred_keepers <- c(VSURF_pred_keepers, "age", "female")
+# 
+# # # if one of the steps only produced 1 variable, use the previous VSURF list of names
+# # if (length(VSURF_pred_keepers) > 1) {
+# #   training_ready_sub_vsurf_result = dplyr::select(data,
+# #                                                   c(outcomeVariable, VSURF_pred_keepers))
+# #   training_ready_sub_vsurf_result_varImp = dplyr::select(data,
+# #                                                          c(outcomeVariable, VSURF_interp_keepers))
+# # } else if (length(VSURF_pred_keepers) <= 1 &&
+# #            length(VSURF_interp_keepers) > 1) {
+# #   training_ready_sub_vsurf_result = dplyr::select(data,
+# #                                                   c(outcomeVariable, VSURF_interp_keepers))
+# #   training_ready_sub_vsurf_result_varImp = dplyr::select(data,
+# #                                                          c(outcomeVariable, VSURF_interp_keepers))
+# # } else if (length(VSURF_pred_keepers) <= 1 &&
+# #            length(VSURF_interp_keepers) <= 1) {
+# #   training_ready_sub_vsurf_result = dplyr::select(data,
+# #                                                   c(outcomeVariable, VSURF_thres_keepers))
+# #   training_ready_sub_vsurf_result_varImp = dplyr::select(data,
+# #                                                          c(outcomeVariable, VSURF_thres_keepers))
+# # }
+# 
+# training_ready_sub_vsurf_result = dplyr::select(data,
+#                                                 c(outcomeVariable, VSURF_pred_keepers))
+# training_ready_sub_vsurf_result_varImp = dplyr::select(data,
+#                                                        c(outcomeVariable, VSURF_interp_keepers))
+# training_ready_sub_vsurf_result_tresh = dplyr::select(data,
+#                                                       c(outcomeVariable, VSURF_thres_keepers))
+# 
+# glimpse(training_ready_sub_vsurf_result)
+# glimpse(training_ready_sub_vsurf_result_varImp)
+# glimpse(training_ready_sub_vsurf_result_tresh)
+# 
+# 
+# 
+# # #---RF All Variables---#########################################################################################################################################################################
+# 
+# x <- x
+# x <- x %>% dplyr::select(-diagnosis) 
+# y <- y
+# 
+# if (length(data) > 2) {
+#   bestMtry <-
+#     randomForest::tuneRF(
+#       x,
+#       y,
+#       stepFactor = 1,
+#       improve = 1e-5,
+#       ntree = number_trees,
+#       na.action = nasaction
+#     )
+#   bestMtry <- as.data.frame(bestMtry)
+#   mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
+#   # mtry_best <- max(floor(ncol(x)/3), 1)
+# } else{
+#   mtry_best <- 1
+# }
+# tunegrid <- expand.grid(
+#   .mtry = mtry_best,
+#   .splitrule = c('gini'),
+#   .min.node.size = c(5, 10, 20)
+# )
+# control <- caret::trainControl(method = "cv",
+#                                number = 3,
+#                                # repeats=3,
+#                                # verboseIter = T,
+#                                # classProbs = T,
+#                                allowParallel = TRUE,
+#                                verboseIter = TRUE)
+# mod_formula <- as.formula(paste(outcomeVariable, "~", "."))
+# unregister_dopar()
+# rf.mod.ALL <- caret::train(
+#   mod_formula,
+#   data = data,
+#   # data = training_ready_sub_vsurf_result_varImp,
+#   # data = training_ready_sub_vsurf_result,
+#   # method = 'ranger',
+#   method = 'rf',
+#   na.action = na.omit,
+#   keep.inbag = TRUE,
+#   replace = TRUE,
+#   # importance = "permutation", #***
+#   trControl = control,
+#   num.threads = num_cores
+# )
+# varImp(rf.mod.ALL)
+# 
+# # #---RF thresholding step ---#########################################################################################################################################################################
+# 
+# x <- training_ready_sub_vsurf_result_tresh
+# x <- x %>% dplyr::select(-diagnosis) 
+# y <- y
+# 
+# if (length(data) > 2) {
+#   bestMtry <-
+#     randomForest::tuneRF(
+#       x,
+#       y,
+#       stepFactor = 1,
+#       improve = 1e-5,
+#       ntree = number_trees,
+#       na.action = nasaction
+#     )
+#   bestMtry <- as.data.frame(bestMtry)
+#   mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
+#   # mtry_best <- max(floor(ncol(x)/3), 1)
+# } else{
+#   mtry_best <- 1
+# }
+# tunegrid <- expand.grid(
+#   .mtry = mtry_best,
+#   .splitrule = c('gini'),
+#   .min.node.size = c(5, 10, 20)
+# )
+# control <- caret::trainControl(method = "cv",
+#                                number = 3,
+#                                # repeats=3,
+#                                # verboseIter = T,
+#                                # classProbs = T,
+#                                allowParallel = TRUE,
+#                                verboseIter = TRUE)
+# mod_formula <- as.formula(paste(outcomeVariable, "~", "."))
+# unregister_dopar()
+# rf.mod.THRESH <- caret::train(
+#   mod_formula,
+#   data = training_ready_sub_vsurf_result_tresh,
+#   # method = 'ranger',
+#   method = 'rf',
+#   na.action = na.omit,
+#   keep.inbag = TRUE,
+#   replace = TRUE,
+#   # importance = "permutation", #***
+#   trControl = control,
+#   num.threads = num_cores
+# )
+# varImp(rf.mod.THRESH)
+# 
+# #---RF Interpretation step---#########################################################################################################################################################################
+# 
+# x <- training_ready_sub_vsurf_result_varImp
+# x <- x %>% dplyr::select(-diagnosis) 
+# y <- y
+# 
+# if (length(data) > 2) {
+#   bestMtry <-
+#     randomForest::tuneRF(
+#       x,
+#       y,
+#       stepFactor = 1,
+#       improve = 1e-5,
+#       ntree = number_trees,
+#       na.action = nasaction
+#     )
+#   bestMtry <- as.data.frame(bestMtry)
+#   mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
+#   # mtry_best <- max(floor(ncol(x)/3), 1)
+# } else{
+#   mtry_best <- 1
+# }
+# tunegrid <- expand.grid(
+#   .mtry = mtry_best,
+#   .splitrule = c('gini'),
+#   .min.node.size = c(5, 10, 20)
+# )
+# control <- caret::trainControl(method = "cv",
+#                                number = 3,
+#                                # repeats=3,
+#                                # verboseIter = T,
+#                                # classProbs = T,
+#                                allowParallel = TRUE,
+#                                verboseIter = TRUE)
+# mod_formula <- as.formula(paste(outcomeVariable, "~", "."))
+# unregister_dopar()
+# rf.mod.INTERP <- caret::train(
+#   mod_formula,
+#   data = training_ready_sub_vsurf_result_varImp,
+#   # method = 'ranger',
+#   method = 'rf',
+#   na.action = na.omit,
+#   keep.inbag = TRUE,
+#   replace = TRUE,
+#   # importance = "permutation", #***
+#   trControl = control,
+#   num.threads = num_cores
+# )
+# varImp(rf.mod.INTERP)
+# 
+# df_tmp <- varImp(rf.mod.INTERP)
+# df_tmp2 <- as.data.frame(df_tmp$importance); colnames(df_tmp2) <- c("imp")
+# df2 <- df_tmp2 %>%
+#   tibble::rownames_to_column() %>%
+#   dplyr::rename("variable" = rowname) %>%
+#   dplyr::arrange(imp) %>%
+#   dplyr::mutate(variable = forcats::fct_inorder(variable))
+# plot_varimp <- ggplot2::ggplot(df2) +
+#   geom_segment(
+#     aes(
+#       x = variable,
+#       y = 0,
+#       xend = variable,
+#       yend = imp
+#     ),
+#     size = 1.5,
+#     alpha = 0.7
+#   ) +
+#   geom_point(aes(x = variable, y = imp, col = variable),
+#              size = 4,
+#              show.legend = F) +
+#   coord_flip() +
+#   labs(y = "Importance", x = NULL, title = "") +
+#   theme_bw() +
+#   theme(legend.title = element_text(size = 14)) +
+#   theme(
+#     axis.text.x = element_text(
+#       color = "black",
+#       size = 13,
+#       angle = 0,
+#       hjust = .5,
+#       vjust = .5
+#     ),
+#     axis.text.y = element_text(
+#       color = "black",
+#       size = length(unique(df2$variable))*1/6,
+#       angle = 0
+#     ),
+#     axis.title.x = element_text(
+#       color = "black",
+#       size = 13,
+#       angle = 0
+#     ),
+#     axis.title.y = element_text(
+#       color = "black",
+#       size = 13,
+#       angle = 90
+#     )
+#   )
+# plot_varimp
+# 
+# #---RF Prediction step---#########################################################################################################################################################################
+# 
+# x <- training_ready_sub_vsurf_result
+# x <- x %>% dplyr::select(-diagnosis) 
+# y <- y
+# 
+# if (length(data) > 2) {
+#   bestMtry <-
+#     randomForest::tuneRF(
+#       x,
+#       y,
+#       stepFactor = 1,
+#       improve = 1e-5,
+#       ntree = number_trees,
+#       na.action = nasaction
+#     )
+#   bestMtry <- as.data.frame(bestMtry)
+#   mtry_best <- bestMtry$mtry[which.min(bestMtry$OOBError)]
+#   # mtry_best <- max(floor(ncol(x)/3), 1)
+# } else{
+#   mtry_best <- 1
+# }
+# tunegrid <- expand.grid(
+#   .mtry = mtry_best,
+#   .splitrule = c('gini'),
+#   .min.node.size = c(5, 10, 20)
+# )
+# control <- caret::trainControl(method = "cv",
+#                                number = 3,
+#                                # repeats=3,
+#                                # verboseIter = T,
+#                                # classProbs = T,
+#                                allowParallel = TRUE,
+#                                verboseIter = TRUE)
+# mod_formula <- as.formula(paste(outcomeVariable, "~", "."))
+# unregister_dopar()
+# rf.mod.PRED <- caret::train(
+#   mod_formula,
+#   data = training_ready_sub_vsurf_result,
+#   # method = 'ranger',
+#   method = 'rf',
+#   na.action = na.omit,
+#   keep.inbag = TRUE,
+#   replace = TRUE,
+#   # importance = "permutation", #***
+#   trControl = control,
+#   num.threads = num_cores
+# )
+# varImp(rf.mod.PRED)
+# 
+# df_tmp <- varImp(rf.mod.PRED)
+# df_tmp2 <- as.data.frame(df_tmp$importance); colnames(df_tmp2) <- c("imp")
+# df2 <- df_tmp2 %>%
+#   tibble::rownames_to_column() %>%
+#   dplyr::rename("variable" = rowname) %>%
+#   dplyr::arrange(imp) %>%
+#   dplyr::mutate(variable = forcats::fct_inorder(variable))
+# plot_varimp2 <- ggplot2::ggplot(df2) +
+#   geom_segment(
+#     aes(
+#       x = variable,
+#       y = 0,
+#       xend = variable,
+#       yend = imp
+#     ),
+#     size = 1.5,
+#     alpha = 0.7
+#   ) +
+#   geom_point(aes(x = variable, y = imp, col = variable),
+#              size = 4,
+#              show.legend = F) +
+#   coord_flip() +
+#   labs(y = "Importance", x = NULL, title = "") +
+#   theme_bw() +
+#   theme(legend.title = element_text(size = 14)) +
+#   theme(
+#     axis.text.x = element_text(
+#       color = "black",
+#       size = 13,
+#       angle = 0,
+#       hjust = .5,
+#       vjust = .5
+#     ),
+#     axis.text.y = element_text(
+#       color = "black",
+#       size = length(unique(df2$variable))*1/3,
+#       angle = 0
+#     ),
+#     axis.title.x = element_text(
+#       color = "black",
+#       size = 13,
+#       angle = 0
+#     ),
+#     axis.title.y = element_text(
+#       color = "black",
+#       size = 13,
+#       angle = 90
+#     )
+#   )
+# plot_varimp2
+# 
+# #---simple glm---#########################################################################################################################################################################
+# 
+# print(paste0("diagnosis ~ ", paste(VSURF_interp_keepers, sep = "", collapse = " + ")))
+# myglm <- glm(as.formula(paste0("diagnosis ~ ", paste(VSURF_interp_keepers, sep = "", collapse = " + "))),
+#              data = data, na.action = na.omit, family = binomial()
+# )
+# 
+# #---evaluate prediction---#########################################################################################################################################################################
+# 
+# # postPred_RF <- as.data.frame(predict(rf.mod.ALL, newdata = mergeytest))
+# # postPred_RF <- as.data.frame(predict(rf.mod.THRESH, newdata = mergeytest))
+# # postPred_RF <- as.data.frame(predict(rf.mod.INTERP, newdata = mergeytest))
+# postPred_RF <- as.data.frame(predict(rf.mod.PRED, newdata = mergeytest))
+# # postPred_RF <- as.data.frame(predict(myglm, newdata = mergeytest)); postPred_RF <- ifelse(postPred_RF[,1] > 0.25, "1", "0")
+# 
+# comparePrediction <- cbind(as.character(mergeytest$diagnosis), postPred_RF)
+# comparePrediction <- as.data.frame(comparePrediction)
+# colnames(comparePrediction) <- c("actual", "predicted")
+# (comparePrediction$actual == comparePrediction$prediction)
+# summary((comparePrediction$actual == comparePrediction$prediction))
+# # View(comparePrediction)
+# 
+# ggplot(data = comparePrediction, aes(x = actual, y = predicted))+
+#   scale_fill_viridis_d( option = "D")+
+#   theme_dark()+
+#   geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
+#   geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
+#   theme(plot.title = element_text(hjust = 0.5))+
+#   # theme(axis.title.x = element_text(size=14))+
+#   theme(axis.text.x = element_text(colour = "black"))+
+#   theme(axis.text.y = element_text(colour = "black"))+
+#   theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
+#   theme(panel.grid.major.x = element_blank())+
+#   theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
+#   # labs(title = addToTitle)+
+#   ylab("Predicted Diagnosis")+
+#   xlab("Actual Diagnosis")
+# 
+# print(VSURF_thres_keepers)
+# print(VSURF_interp_keepers)
+# print(VSURF_pred_keepers)
+# 
+# # rtn <- rf.mod.PRED
+# rtn <- rf.mod.INTERP #the interpretation set of selected parameters seems to do the best 
+# # rtn <- rf.mod.ALL
+# # rtn <- myglm
+# 
+# #---Look at effect size directions---#########################################################################################################################################################################
+# 
+# sub_tenResults <- subset(tenResults, featureNames %in% VSURF_pred_keepers)
+# 
+# # make volcano plot
+# bplot2 <- ggplot(aes(x = betas, y = -log10(pvals), col=mycolors, label=delabels), data = sub_tenResults) +
+#   # geom_bar(stat="identity", fill = "steelblue") + theme_minimal()
+#   geom_point() +
+#   theme_minimal() +
+#   geom_text() +
+#   geom_vline(xintercept = 0)
+# bplot2
+# 
+# #---make a regression tree---#########################################################################################################################################################################
+# 
+# require(tree)
+# mytree <- tree(diagnosis ~ ., data = training_ready_sub_vsurf_result)
+# plot(mytree)
+# text(mytree, pretty = 0, cex = .8)
