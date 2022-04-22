@@ -497,6 +497,13 @@ summary((comparePrediction$actual == comparePrediction$prediction))
 PredPlotRF <- boxViolinPlot(pred_df = comparePrediction, predictionDF = predictionDF)
 PredPlotRF
 
+metagenomics_glmer_scores <- pred_df
+metagenomics_glmer_scores <- tibble::rownames_to_column(metagenomics_glmer_scores, "External_ID")
+write.table(metagenomics_glmer_scores, "metagenomics_glmer_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+metagenomics_MixRF_scores <- comparePrediction
+metagenomics_MixRF_scores <- tibble::rownames_to_column(metagenomics_MixRF_scores, "External_ID")
+write.table(metagenomics_MixRF_scores, "metagenomics_MixRF_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+
 # #---make a regression tree---#########################################################################################################################################################################
 # 
 # require(tree)
