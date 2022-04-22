@@ -1,4 +1,4 @@
-
+ 
 setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
 
 list.files()
@@ -164,17 +164,11 @@ grouped_df_3 <- grouped_df_3[mygrepni,]
 
 view(grouped_df_3)
 
-#########--STOPPED HERE 4/21--#########
-
 ## Preprocessing, make data compositional for species --###################################
 # grouped_df_3 <- df_3[mygrepni,]
 # rownames(grouped_df_3) <- rownames(df_3)[mygrepni]
 
-rownames(grouped_df_3) <- rownames(df_3)[grep_species]
 num_grouped_df_3 <- mutate_all(grouped_df_3, function(x) as.numeric(as.character(x)))
-
-look <- as.data.frame(rownames(num_grouped_df_3)); colnames(look) <- c("look")
-looksep <- look %>% separate(look,into=c("kingdom","phylum","class","order","family","genus","species"),convert=TRUE,sep="\\|")
 
 # is it compositional?
 summary(colSums(num_grouped_df_3))
@@ -214,7 +208,7 @@ hist(alldf_posttransform$alldf_posttransform)
 # rename the columns for the merge with metadata
 namesies <- as.data.frame(colnames(clr_num_grouped_df_3)); colnames(namesies) <- c("namesies")
 head(namesies)
-namesiessep <- namesies %>% separate(namesies,into=c("namesies","junk"),convert=TRUE,sep="_profi")
+namesiessep <- namesies %>% separate(namesies,into=c("namesies","junk"),convert=TRUE,sep="_patha")
 colnames(clr_num_grouped_df_3) <- namesiessep$namesies
 
 intersecty <- intersect(c(as.character(namesiessep$namesies)), 
@@ -253,12 +247,12 @@ rownames(mergey) <- mergey$`External ID`
 mergey$`External ID` <- NULL
 
 # remove any columns that have no/little variation between samples...
-mergeytest_colsd <- apply(mergeytest[complete.cases(mergeytest),grep("s__", names(mergeytest), invert = F)], 2, sd, na.rm=T)
-mergey_colsd <- apply(mergey[complete.cases(mergey),grep("s__", names(mergey), invert = F)], 2, sd, na.rm=T)
+mergeytest_colsd <- apply(mergeytest[complete.cases(mergeytest),], 2, sd, na.rm=T)
+mergey_colsd <- apply(mergey[complete.cases(mergey),], 2, sd, na.rm=T)
 # qthresh <- quantile(colsd, 0.05, na.rm=T)
 hist(as.numeric(mergeytest_colsd))
 hist(as.numeric(mergey_colsd))
-toKeep <- c(intersect(c(names(mergeytest_colsd)[which(mergeytest_colsd > 0.1)]), c(names(mergey_colsd)[which(mergey_colsd > 0.1)])),
+toKeep <- c(intersect(c(names(mergeytest_colsd)[which(mergeytest_colsd > 1)]), c(names(mergey_colsd)[which(mergey_colsd > 1)])),
             c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")
             )
 length(toKeep)
@@ -267,14 +261,34 @@ mergeytest <- mergeytest[,which(names(mergeytest) %in% toKeep)]
 mergey <- mergey[,which(names(mergey) %in% toKeep)]
 
 # rename the column names with just the species
-cn <- as.data.frame(colnames(mergey)); colnames(cn) <- c("cn")
-cn <- cn %>% separate(cn,into=c("junk","species"),convert=TRUE,sep="\\|s__")
-cn <- cn$species
-cn[is.na(cn)] <- c("Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")
-head(cn,20)
-tail(cn,20)
+cn <- colnames(mergey)
+cn
+# 
+# cn <- cn %>% separate(cn,into=c("junk","species"),convert=TRUE,sep="\\|s__")
+# cn <- cn$species
+# cn[is.na(cn)] <- c("Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")
+# head(cn,20)
+# tail(cn,20)
 cn <- gsub(pattern = "\\[", replacement = "", cn)
 cn <- gsub(pattern = "\\]", replacement = "", cn)
+cn <- gsub(pattern = "-", replacement = "_", cn)
+cn <- gsub(pattern = " ", replacement = "_", cn)
+cn <- gsub(pattern = ":", replacement = "__", cn)
+cn <- gsub(pattern = ",", replacement = "_", cn)
+cn <- gsub(pattern = ";", replacement = "_", cn)
+cn <- gsub(pattern = "&", replacement = "_and_", cn)
+cn <- gsub(pattern = "\\(", replacement = "", cn)
+cn <- gsub(pattern = "\\)", replacement = "", cn)
+cn <- gsub(pattern = "'", replacement = "prime", cn)
+cn <- gsub(pattern = "\\+", replacement = "plus", cn)
+cn <- gsub(pattern = "\\/", replacement = "_", cn)
+
+
+cn[which(sapply(strsplit(cn,""),"[[",1) %in% 0:9)] <- paste0("P_", cn[which(sapply(strsplit(cn,""),"[[",1) %in% 0:9)])
+
+
+cn
+
 colnames(mergeytest) <- cn
 colnames(mergey) <- cn
 
@@ -288,21 +302,89 @@ mergey$consent_age <- as.numeric(mergey$consent_age)
 mergey$`Participant_ID` <- as.factor(mergey$`Participant_ID`)
 mergey$sex <- as.factor(mergey$sex)
 mergey$race <- as.factor(mergey$race)
+mergey$Antibiotics <- as.factor(mergey$Antibiotics)
+
 
 str(mergey[,1:30])
 str(mergey[,(ncol(mergey)-30):ncol(mergey)])
 
 traindf <- as.data.frame(mergey[complete.cases(mergey),])
+
+traindf$diagnosis <- as.integer(as.character(traindf$diagnosis))
+# traindf$diagnosis <- as.numeric(traindf$diagnosis)
+traindf$site_name <- as.factor(traindf$site_name)
+traindf$consent_age <- as.numeric(traindf$consent_age)
+traindf$`Participant_ID` <- as.factor(traindf$`Participant_ID`)
+traindf$sex <- as.factor(traindf$sex)
+traindf$race <- as.factor(traindf$race)
+traindf$Antibiotics <- as.factor(traindf$Antibiotics)
+
+
 dim(traindf)
 dim(mergey)
 varlist <- cn[which(cn %ni% c("diagnosis", "Participant_ID"))]
+
+for(i in 1:length(varlist)){
+  if(varlist[i] %in% c("site_name", "sex", "race", "Antibiotics")){
+    varlist[i] <- paste0("as.factor(",varlist[i],")")
+  }
+}
 # varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
 varstring <- paste0(varlist, collapse = " + ", sep = "")
 
 ## LASSO Lambda Search ######################################################
 
+
+colnames(traindf)[grep("PWY_5083___NAD", colnames(traindf))]
+
+weird_col <- grep("PWY_5083___NAD", colnames(traindf))
+
+
+str(traindf[,(weird_col-3):(weird_col+3)])
+
+traindf$diagnosis <- as.integer(traindf$diagnosis)
+
+
+# remove colinear columns
+
+non_pwy_data <- c(Participant_ID,site_name,diagnosis,consent_age,sex,race,Antibiotics)
+
+pwy_df <- traindf%>% dplyr::select( -Participant_ID,
+                 -site_name,
+                 -diagnosis,
+                 -consent_age,
+                 -sex,
+                 -race,
+                 -Antibiotics)
+
+tmp <- cor(pwy_df)
+tmp[upper.tri(tmp)] <- 0
+diag(tmp) <- 0
+
+# Above two commands can be replaced with 
+# tmp[!lower.tri(tmp)] <- 0
+
+data.new <- 
+  pwy_df[, !apply(tmp, 2, function(x) any(abs(x) > 0.95, na.rm = TRUE))]
+head(data.new)
+
+dim(data.new)
+dim(pwy_df)
+
+train_df <- cbind(data.new,
+      traindf%>% dplyr::select(Participant_ID,
+                               site_name,
+                               diagnosis,
+                               consent_age,
+                               sex,
+                               race,
+                               Antibiotics)) %>%
+  as.data.frame()
+
+dim(train_df)
+
 numvariables <- c()
-lambdavec <- seq(from = 70, to = 110, by = 5)
+lambdavec <- seq(from = 10, to = 110, by = 5)
 for(lambdy in lambdavec){
   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
                    data = traindf,
@@ -317,19 +399,22 @@ for(lambdy in lambdavec){
 }
 plot(x = lambdavec, y = numvariables)
 
+lassoFeatures
+
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
                  data = traindf, 
                  rnd = list(Participant_ID=~1),
-                 lambda=100,
+                 lambda=25,
                  family = binomial(link = "logit"))
 summary(lm1)
 lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
-lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)", "sexMale")]
+lassoFeatures <- lassoFeatures[grep("Participant_ID|site_name|diagnosis|consent_age|sex|race|Antibiotics|Intercept", lassoFeatures, invert = T)]
 # lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
 lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race"))
 
 ## Prediction Boxplot and AUC for LASSO ######################################################
-df_bestglm <- as.data.frame(traindf[,c(lassoFeatures)])
+
+df_bestglm <- as.data.frame(traindf[,lassoFeatures])
 df_bestglm$diagnosis <- as.factor(as.character(df_bestglm$diagnosis))
 summary(df_bestglm$diagnosis)
 
@@ -341,6 +426,7 @@ mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Partici
              data = df_bestglm, 
              family = binomial)
 mymodsum <- summary(mymod)
+mymodsum
 # prediction on reserved validation samples
 # filter prediction dataframe to only complete cases
 predictionDF <- mergeytest[complete.cases(mergeytest),]
@@ -494,7 +580,7 @@ predictionDF <- rbind(myX[1, ] , predictionDF)
 predictionDF <- predictionDF[-1,]
 
 # predictionDF$diagnosis <- as.factor(predictionDF$diagnosis)
-postPred_RF <- as.data.frame(predict(myMixRF$forest, newdata = predictionDF), allow.new.levels = T)
+postPred_RF <- as.data.frame(scale(predict(myMixRF$forest, newdata = predictionDF)))
 # postPred_RF <- as.data.frame(predict(myglm, newdata = mergeytest)); postPred_RF <- ifelse(postPred_RF[,1] > 0.25, "1", "0")
 
 comparePrediction <- cbind(as.character(predictionDF$diagnosis), postPred_RF)
@@ -506,6 +592,19 @@ summary((comparePrediction$actual == comparePrediction$prediction))
 
 PredPlotRF <- boxViolinPlot(pred_df = comparePrediction, predictionDF = predictionDF)
 PredPlotRF
+
+
+
+
+metatranscriptomics_glmer_scores <- pred_df
+metatranscriptomics_glmer_scores <- tibble::rownames_to_column(metatranscriptomics_glmer_scores, "External_ID")
+write.table(metatranscriptomics_glmer_scores, "metatranscriptomics_glmer_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+metatranscriptomics_MixRF_scores <- comparePrediction
+metatranscriptomics_MixRF_scores <- tibble::rownames_to_column(metatranscriptomics_MixRF_scores, "External_ID")
+write.table(metatranscriptomics_MixRF_scores, "metatranscriptomics_MixRF_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+
+
+
 
 # #---make a regression tree---#########################################################################################################################################################################
 # 
