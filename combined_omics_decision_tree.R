@@ -113,10 +113,18 @@ avg_par_scores <- rf_scores %>%
             metagen_pred = mean(metagen_pred), 
             metatrans_pred = mean(metatrans_pred)) 
             # metabol_pred = mean(metabol_pred))
-avg_par_scores
+avg_par_scores <- as.data.frame(avg_par_scores)
+rownames(avg_par_scores) <- avg_par_scores$`Participant_ID`
+avg_par_scores$`Participant_ID` <- NULL
 
-## decision tree --#####
+view(avg_par_scores)
+
+## combined regression --#####
 
 
 
+combomod <- glm(as.formula(paste0("diagnosis ~ .")), data = avg_par_scores, family = "binomial")
+
+combomod_sum <- summary(combomod)
+combomod_sum
 
