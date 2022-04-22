@@ -261,6 +261,7 @@ cn <- cn$species
 cn[is.na(cn)] <- c("Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")
 head(cn,20)
 tail(cn,20)
+# remove the square brackets
 cn <- gsub(pattern = "\\[", replacement = "", cn)
 cn <- gsub(pattern = "\\]", replacement = "", cn)
 colnames(mergeytest) <- cn
@@ -312,7 +313,8 @@ lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
                  family = binomial(link = "logit"))
 summary(lm1)
 lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
-lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)", "sexMale")]
+# lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)", "sexMale")]
+lassoFeatures <- lassoFeatures[grep("Participant_ID|site_name|diagnosis|consent_age|sex|race|Antibiotics|Intercept", lassoFeatures, invert = T)]
 # lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
 lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race"))
 
@@ -482,7 +484,7 @@ predictionDF <- rbind(myX[1, ] , predictionDF)
 predictionDF <- predictionDF[-1,]
 
 # predictionDF$diagnosis <- as.factor(predictionDF$diagnosis)
-postPred_RF <- as.data.frame(predict(myMixRF$forest, newdata = predictionDF), allow.new.levels = T)
+postPred_RF <- as.data.frame(scale(predict(myMixRF$forest, newdata = predictionDF)))
 # postPred_RF <- as.data.frame(predict(myglm, newdata = mergeytest)); postPred_RF <- ifelse(postPred_RF[,1] > 0.25, "1", "0")
 
 comparePrediction <- cbind(as.character(predictionDF$diagnosis), postPred_RF)
