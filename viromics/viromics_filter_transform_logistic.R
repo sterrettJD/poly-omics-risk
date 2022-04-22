@@ -288,6 +288,10 @@ tail(cn,20)
 colnames(mergeytest) <- cn
 colnames(mergey) <- cn
 
+
+
+mergey %>% select(c("Participant_ID","race","consent_age","site_name","diagnosis","sex","Antibiotics"))
+
 ## run LASSO regression for all features --###################################
 
 ## linear mixed model
@@ -330,23 +334,25 @@ plot(x = lambdavec, y = numvariables)
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
                  data = traindf, 
                  rnd = list(Participant_ID=~1),
-                 lambda=10,
+                 lambda=11,
                  family = binomial(link = "logit"))
 summary(lm1)
 lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
-lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)",
-                                                    "sexMale",
-                                                    "raceMore than one race",
-                                                    "raceWhite",
-                                                    "raceOther",
-                                                    "site_nameCincinnati",
-                                                    "site_nameMGH",
-                                                    "site_nameEmory",
-                                                    "site_nameMGH Pediatrics",
-                                                    "AntibioticsYes"
-                                                    )]
-# lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
-lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race"))
+# lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)",
+#                                                     "sexMale",
+#                                                     "raceMore than one race",
+#                                                     "raceWhite",
+#                                                     "raceOther",
+#                                                     "site_nameCincinnati",
+#                                                     "site_nameMGH",
+#                                                     "site_nameEmory",
+#                                                     "site_nameMGH Pediatrics",
+#                                                     "AntibioticsYes"
+#                                                      )]
+
+lassoFeatures <- lassoFeatures[grep("Participant_ID|site_name|diagnosis|consent_age|sex|race|Antibiotics|Intercept", lassoFeatures, invert = T)]
+lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
+#lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race"))
 
 ## Prediction Boxplot and AUC for LASSO ######################################################
 df_bestglm <- as.data.frame(traindf[,c(lassoFeatures)])
@@ -420,6 +426,8 @@ boxViolinPlot <- function(pred_df = pred_df, predictionDF = predictionDF){
 
 PredPlotLasso <- boxViolinPlot(pred_df = pred_df, predictionDF = predictionDF)
 PredPlotLasso
+
+
 
 # ## Mixed Effects Random Forests via MixRF ######################################################
 
@@ -514,7 +522,7 @@ predictionDF <- rbind(myX[1, ] , predictionDF)
 predictionDF <- predictionDF[-1,]
 
 # predictionDF$diagnosis <- as.factor(predictionDF$diagnosis)
-postPred_RF <- as.data.frame(predict(myMixRF$forest, newdata = predictionDF), allow.new.levels = T)
+postPred_RF <- as.data.frame(scale(predict(myMixRF$forest, newdata = predictionDF)))
 # postPred_RF <- as.data.frame(predict(myglm, newdata = mergeytest)); postPred_RF <- ifelse(postPred_RF[,1] > 0.25, "1", "0")
 
 comparePrediction <- cbind(as.character(predictionDF$diagnosis), postPred_RF)
@@ -526,6 +534,20 @@ summary((comparePrediction$actual == comparePrediction$prediction))
 
 PredPlotRF <- boxViolinPlot(pred_df = comparePrediction, predictionDF = predictionDF)
 PredPlotRF
+
+
+## Output predictions from lasso and MixRF --######
+# Rerun at your own risk
+# viromics_glmer_scores <- pred_df
+# viromics_glmer_scores <- tibble::rownames_to_column(viromics_glmer_scores, "External_ID")
+# write.table(viromics_glmer_scores, "./viromics/viromics_glmer_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+# 
+# 
+# viromics_MixRF_scores <- pred_df
+# viromics_MixRF_scores <- tibble::rownames_to_column(viromics_MixRF_scores, "External_ID")
+# write.table(viromics_MixRF_scores, "./viromics/viromics_MixRF_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+
+
 
 # ## run logistic regression for each feature --###################################
 # featureNames <- c()
