@@ -1,8 +1,8 @@
-base_dir = "C:\\Users\\rgarr\\Documents\\poly-omics-risk\\"
+# base_dir = "C:\\Users\\rgarr\\Documents\\poly-omics-risk\\"
 #setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
+base_dir = "/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk"
 
-
-list.files()
+list.files("./viromics/")
 
 # install.packages("data.table")
 # install.packages("ggplot2")
@@ -66,39 +66,39 @@ metadata
 # will duplicate, one for lasso one for MixRF
 
 # viromics
-setwd(glue("{base_dir}viromics"))
-viromic_MixRF <- fread("./viromics_MixRF_scores.txt", header=T)
+# setwd(glue("{base_dir}viromics"))
+viromic_MixRF <- fread("./viromics/viromics_MixRF_scores.txt", header=T)
 viromic_MixRF <- as.data.frame(viromic_MixRF[,c("External_ID","predicted")])
 viromic_MixRF <- viromic_MixRF %>% rename("virome_pred" ="predicted")
 viromic_MixRF
 
 # metagenomics
-setwd(glue("{base_dir}metagenomics"))
-metagenomic_MixRF <- fread("./metagenomics_MixRF_scores.txt", header=T)
+# setwd(glue("{base_dir}metagenomics"))
+metagenomic_MixRF <- fread("./metagenomics/metagenomics_MixRF_scores.txt", header=T)
 metagenomic_MixRF <- as.data.frame(metagenomic_MixRF[,c("External_ID","predicted")])
 metagenomic_MixRF <- metagenomic_MixRF %>% rename("metagen_pred" ="predicted")
 metagenomic_MixRF
 
 # metatranscriptomics
-setwd(glue("{base_dir}metatranscriptomics"))
-metatranscriptomic_MixRF <- fread("./metatranscriptomics_MixRF_scores.txt", header=T)
+# setwd(glue("{base_dir}metatranscriptomics"))
+metatranscriptomic_MixRF <- fread("./metatranscriptomics/metatranscriptomics_MixRF_scores.txt", header=T)
 metatranscriptomic_MixRF <- as.data.frame(metatranscriptomic_MixRF[,c("External_ID","predicted")])
 metatranscriptomic_MixRF <- metatranscriptomic_MixRF %>% rename("metatrans_pred" ="predicted")
 metatranscriptomic_MixRF
 
 # # metabolomics
 # setwd(glue("{base_dir}metabolomics"))
-# metabolomic_MixRF <- fread("./metabolmics_MixRF_scores.txt", header=T)
-# metabolomic_MixRF <- as.data.frame(metabolomic_MixRF[,c("External_ID","predicted")])
-# metabolomic_MixRF <- metabolomic_MixRF %>% rename("metabol_pred" ="predicted")
-# metabolomic_MixRF
+metabolomic_MixRF <- fread("./metabolomics/metabolomics_MixRF_scores.txt", header=T)
+metabolomic_MixRF <- as.data.frame(metabolomic_MixRF[,c("External_ID","predicted")])
+metabolomic_MixRF <- metabolomic_MixRF %>% rename("metabol_pred" ="predicted")
+metabolomic_MixRF
 
 
 ## merge datasets by external ID  --#################################################################################
 # get dataset with cols: extID,Diagnosis,Score1,Score2,Score3,Score4
 
-df_list <- list(metadata,viromic_MixRF,metagenomic_MixRF,metatranscriptomic_MixRF)
-# df_list <- list(metadata,viromic_MixRF,metagenomic_MixRF,metatranscriptomic_MixRF,metabolomic_MixRF)
+# df_list <- list(metadata,viromic_MixRF,metagenomic_MixRF,metatranscriptomic_MixRF)
+df_list <- list(metadata,viromic_MixRF,metagenomic_MixRF,metatranscriptomic_MixRF,metabolomic_MixRF)
 rf_scores <- df_list %>% reduce(full_join, by="External_ID")
 rf_scores <- as.data.frame(rf_scores[complete.cases(rf_scores),])
 rf_scores 
@@ -111,8 +111,8 @@ avg_par_scores <- rf_scores %>%
   summarize(diagnosis = mean(diagnosis), 
             virome_pred = mean(virome_pred), 
             metagen_pred = mean(metagen_pred), 
-            metatrans_pred = mean(metatrans_pred)) 
-            # metabol_pred = mean(metabol_pred))
+            metatrans_pred = mean(metatrans_pred),
+            metabol_pred = mean(metabol_pred))
 avg_par_scores <- as.data.frame(avg_par_scores)
 rownames(avg_par_scores) <- avg_par_scores$`Participant_ID`
 avg_par_scores$`Participant_ID` <- NULL
@@ -127,4 +127,10 @@ combomod <- glm(as.formula(paste0("diagnosis ~ .")), data = avg_par_scores, fami
 
 combomod_sum <- summary(combomod)
 combomod_sum
+
+# #---make a regression tree---#########################################################################################################################################################################
+# require(tree)
+mytree <- tree(diagnosis ~ ., data = avg_par_scores)
+plot(mytree)
+text(mytree, pretty = 0, cex = .8)
 
