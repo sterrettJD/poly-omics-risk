@@ -1,8 +1,8 @@
-# base_dir = "C:\\Users\\rgarr\\Documents\\poly-omics-risk\\"
-#setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
-base_dir = "/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk"
+base_dir = "C:\\Users\\rgarr\\Documents\\poly-omics-risk\\"
+# setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
+# base_dir = "/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk"
 
-list.files("./viromics/")
+# list.files("./viromics/")
 
 # install.packages("data.table")
 # install.packages("ggplot2")
@@ -51,14 +51,19 @@ library(glue)
 
 setwd(base_dir)
 metadata <- fread("./testing_metadata.txt", header=T)
-metadata <- as.data.frame(metadata[,c("External ID","Participant ID","diagnosis")])
-colnames(metadata) <- c("External_ID","Participant_ID", "diagnosis")
+metadata <- as.data.frame(metadata[,c("External ID","Participant ID","diagnosis", "consent_age", "race","sex", "site_name")])
+colnames(metadata) <- c("External_ID","Participant_ID", "diagnosis","consent_age", "race", "sex","site_name")
 metadata$diagnosis <- as.character(metadata$diagnosis)
 metadata$diagnosis[metadata$diagnosis == "UC"] <- 1
 metadata$diagnosis[metadata$diagnosis == "CD"] <- 1
 metadata$diagnosis[metadata$diagnosis == "nonIBD"] <- 0
 metadata$diagnosis <- as.numeric(metadata$diagnosis)
-
+metadata$External_ID <- as.character(metadata$External_ID)
+metadata$Participant_ID <- as.character(metadata$Participant_ID)
+metadata$sex <- as.factor(metadata$sex)
+metadata$site_name <- as.factor(metadata$site_name)
+metadata$consent_age <- as.numeric(metadata$consent_age)
+metadata$race <- as.factor(metadata$race)
 metadata
 
 
@@ -104,33 +109,40 @@ rf_scores <- as.data.frame(rf_scores[complete.cases(rf_scores),])
 rf_scores 
 
 
-## average individual scores by participant ID --####
+## average individual scores by participant ID --########################################################################
 
 avg_par_scores <- rf_scores %>% 
   group_by(Participant_ID) %>%
-  summarize(diagnosis = mean(diagnosis), 
-            virome_pred = mean(virome_pred), 
+  summarize( virome_pred = mean(virome_pred), 
             metagen_pred = mean(metagen_pred), 
             metatrans_pred = mean(metatrans_pred),
             metabol_pred = mean(metabol_pred))
 avg_par_scores <- as.data.frame(avg_par_scores)
-rownames(avg_par_scores) <- avg_par_scores$`Participant_ID`
-avg_par_scores$`Participant_ID` <- NULL
 
-view(avg_par_scores)
+
+par_meta <- subset(metadata, select = -(External_ID)) 
+par_meta <- par_meta %>% distinct()
+par_meta
+
+df_for_model <- merge(par_meta, avg_par_scores, by ='Participant_ID')
+df_for_model
+
+
+rownames(df_for_model) <- df_for_model$`Participant_ID`
+df_for_model$`Participant_ID` <- NULL
+
+view(df_for_model)
 
 ## combined regression --#####
 
-
-
-combomod <- glm(as.formula(paste0("diagnosis ~ .")), data = avg_par_scores, family = "binomial")
+combomod <- glm(as.formula(paste0("diagnosis ~ .")), data = df_for_model, family = "binomial")
 
 combomod_sum <- summary(combomod)
 combomod_sum
 
 # #---make a regression tree---#########################################################################################################################################################################
 # require(tree)
-mytree <- tree(diagnosis ~ ., data = avg_par_scores)
+mytree <- tree(diagnosis ~ ., data = df_for_model)
 plot(mytree)
 text(mytree, pretty = 0, cex = .8)
 
