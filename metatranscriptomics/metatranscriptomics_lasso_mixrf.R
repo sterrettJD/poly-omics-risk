@@ -442,6 +442,14 @@ covar_cols <- c("site_nameCincinnati",
 mod_coef_df_nocovar <- mod_coef_df[which(rownames(mod_coef_df) %ni% covar_cols),]
 
 
+mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ site_name + consent_age + sex + race + Antibiotics + (1|Participant_ID)"), 
+                     data = df_bestglm, 
+                     family = binomial)
+
+mod_coef_df_ONLYcovar <- as.data.frame(coef(summary(mymod_ONLYcovar)))
+
+mod_coef_df_ONLYcovar
+
 
 # prediction on reserved validation samples
 # filter prediction dataframe to only complete cases
@@ -450,6 +458,10 @@ predictionDF <- mergeytest[complete.cases(mergeytest),]
 # grab only the columns that we have coefs for (starting at index 2 removes the intercept)
 predictionDF_vars <- predictionDF %>% 
   dplyr::select(rownames(mod_coef_df_nocovar)[2:nrow(mod_coef_df_nocovar)])
+
+predictionDF_ONLYcovars <- predictionDF %>% 
+  dplyr::select(rownames(mod_coef_df_ONLYcovar)[2:nrow(mod_coef_df_ONLYcovar)])
+
 
 predictionDF_vars$Intercept <- 1
 
@@ -462,9 +474,18 @@ pred_risk_scores <- as.matrix(predictionDF_vars) %*% as.matrix(mod_coef_df_nocov
 
 pred_df <- as.data.frame(cbind(predictionDF$diagnosis, scale(pred_risk_scores))); colnames(pred_df) <- c("actual", "predicted")
 pred_df$actual <- as.factor(pred_df$actual)
+
+null_model_predictions <- as.data.frame(cbind(predictionDF$diagnosis, scale(predict(mymod_ONLYcovar, predictionDF, allow.new.levels = T)))); colnames(pred_df) <- c("actual", "predicted")
+
+
+
+
 # make a violin plot of the prediction
-boxViolinPlot <- function(pred_df = pred_df, predictionDF = predictionDF){
-  PredPlot <- ggplot(data = pred_df, aes(x = actual, y = predicted))+
+boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
+  
+  auc_df$actual <- as.factor(auc_df$actual)
+  auc_df$predicted <- as.numeric(auc_df$predicted)
+  PredPlot <- ggplot(data = auc_df, aes(x = actual, y = predicted))+
     scale_fill_viridis_d( option = "D")+
     theme_dark()+
     geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
@@ -480,12 +501,22 @@ boxViolinPlot <- function(pred_df = pred_df, predictionDF = predictionDF){
     ylab("Score")+
     xlab("Actual Diagnosis")
   
-  pred_df$actual <- as.factor(pred_df$actual)
-  pred_df$predicted <- as.numeric(pred_df$predicted)
-  caseControlGLM <- glm(as.formula(pred_df$actual ~ pred_df$predicted), data = pred_df, family = "binomial", na.action = na.omit)
-  predpr <- predict(caseControlGLM, predictionDF, allow.new.levels = T, type = c("response"))
-  caseControlroccurve <- pROC::roc(predictionDF$diagnosis ~ predpr, quiet=T, plot=F)
-  caseControlroccurveCI <- pROC::roc(predictionDF$diagnosis ~ predpr, ci=T, quiet=T)
+  
+  
+  
+  if(covars==""){
+    caseControlGLM <- glm(as.formula(auc_df$actual ~ auc_df$predicted), data = auc_df, family = "binomial", na.action = na.omit)
+  } else if(covars_only==F){
+    caseControlGLM <- glm(as.formula(paste0("actual ~ auc_df$predicted + ",mycovarstring)), data = auc_df, family = "binomial", na.action = na.omit)
+  } else if(covars_only==T){
+    caseControlGLM <- glm(as.formula(paste0("actual ~ ", mycovarstring)), data = auc_df, family = "binomial", na.action = na.omit)
+  }
+  
+  
+  
+  predpr <- predict(caseControlGLM, avg_par_scores, allow.new.levels = T, type = c("response"))
+  caseControlroccurve <- pROC::roc(avg_par_scores$actual ~ predpr, quiet=T, plot=T)
+  caseControlroccurveCI <- pROC::roc(avg_par_scores$actual ~ predpr, ci=T, quiet=T)
   # caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
   
   caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
@@ -502,23 +533,102 @@ boxViolinPlot <- function(pred_df = pred_df, predictionDF = predictionDF){
   caseControlORsummary <- caseControlpthresh
   
   label_disty = .13
-  minPRS <- min(pred_df$predicted)-(abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5*1.02)
-  maxPRS <- max(pred_df$predicted) + (abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5*1.02)
-  botLabLoc <- min(pred_df$predicted)-(abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5)
-  topLabLoc <- max(pred_df$predicted) + (abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*0.21)
+  minPRS <- min(auc_df$predicted)-(abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*1.5*1.02)
+  maxPRS <- max(auc_df$predicted) + (abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*1.5*1.02)
+  botLabLoc <- min(auc_df$predicted)-(abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*1.5)
+  topLabLoc <- max(auc_df$predicted) + (abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*0.21)
+  
+  plot_df <- as.data.frame(cbind(caseControlGLM$fitted.values, auc_df$actual))
+  
+  colnames(plot_df) <- c("predicted", "actual")
+  plot_df$actual <- as.factor(plot_df$actual)
+  
+  
+  
+  
   
   PredPlot <- PredPlot +
     geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlAUCsummary, color="black", y_position = topLabLoc,tip_length=.03)+
     geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlpthresh, color="black", y_position = botLabLoc,tip_length=-.03) +
     scale_y_continuous(breaks = seq(-100,100, by=2), limits = c(minPRS,maxPRS))
+  
+  print(caseControlAUCsummary)
+  print(caseControlpthresh)
   return(PredPlot)
 }
 
-PredPlot <- boxViolinPlot(pred_df = pred_df, predictionDF = predictionDF)
+m_pred_df <- merge(pred_df,predictionDF[,c("Participant_ID","diagnosis", "site_name", "consent_age", "sex", "race", "Antibiotics")], by="row.names")
+rownames(m_pred_df) <- m_pred_df$Row.names
+
+avg_par_scores <- m_pred_df %>% 
+  group_by(Participant_ID) %>%
+  summarize(actual = first(diagnosis), 
+            predicted = mean(predicted),
+             site_name = first(site_name),
+             consent_age = first(consent_age),
+             sex = first(sex),
+             race = first(race),
+             Antibiotics = first(Antibiotics)
+  )
+avg_par_scores <- as.data.frame(avg_par_scores)
+rownames(avg_par_scores) <- avg_par_scores$Participant_ID
+avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
+
+
+mycovarstring <- paste0(c("site_name",
+                          "consent_age", 
+                          "sex", 
+                          "race" 
+                          #"Antibiotics"
+                          ), 
+                        collapse = " + ", sep = "")
+
+# diagnosis ~ score
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+PredPlot
+
+
+# null model
+
+null_model_predictions <- null_model_predictions %>% as.data.frame()
+colnames(null_model_predictions) <- c("actual", "predicted")
+null_model_predictions$actual <- as.factor(null_model_predictions$actual)
+
+m_pred_df <- merge(null_model_predictions,predictionDF[,c("Participant_ID","diagnosis", "site_name", "consent_age", "sex", "race", "Antibiotics")], by="row.names")
+rownames(m_pred_df) <- m_pred_df$Row.names
+
+avg_par_scores <- m_pred_df %>% 
+  group_by(Participant_ID) %>%
+  summarize(actual = first(diagnosis), 
+            predicted = mean(predicted),
+            site_name = first(site_name),
+            consent_age = first(consent_age),
+            sex = first(sex),
+            race = first(race),
+            Antibiotics = first(Antibiotics)
+  )
+avg_par_scores <- as.data.frame(avg_par_scores)
+rownames(avg_par_scores) <- avg_par_scores$Participant_ID
+avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
+
+
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlot
 
 
 
+
+
+pred_df$site_name <- predictionDF$site_name
+pred_df$consent_age <- predictionDF$consent_age
+pred_df$sex <- predictionDF$sex
+pred_df$race <- predictionDF$race
+pred_df$Antibiotics <- predictionDF$Antibiotics
+
+
+
+PredPlotwCovs <- boxViolinPlot(pred_df = pred_df, predictionDF = predictionDF, covars=mycovarstring)
+PredPlotwCovs
 
 
 
@@ -527,56 +637,6 @@ PredPlot
 pred_df <- as.data.frame(cbind(predictionDF$diagnosis, scale(predict(mymod, predictionDF, allow.new.levels = T)))); colnames(pred_df) <- c("actual", "predicted")
 pred_df$actual <- as.factor(pred_df$actual)
 # make a violin plot of the prediction
-boxViolinPlot <- function(pred_df = pred_df, predictionDF = predictionDF){
-  PredPlot <- ggplot(data = pred_df, aes(x = actual, y = predicted))+
-    scale_fill_viridis_d( option = "D")+
-    theme_dark()+
-    geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
-    geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
-    theme(plot.title = element_text(hjust = 0.5))+
-    # theme(axis.title.x = element_text(size=14))+
-    theme(axis.text.x = element_text(colour = "black"))+
-    theme(axis.text.y = element_text(colour = "black"))+
-    theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
-    theme(panel.grid.major.x = element_blank())+
-    theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
-    # labs(title = addToTitle)+
-    ylab("Score")+
-    xlab("Actual Diagnosis")
-  
-  pred_df$actual <- as.factor(pred_df$actual)
-  pred_df$predicted <- as.numeric(pred_df$predicted)
-  caseControlGLM <- glm(as.formula(pred_df$actual ~ pred_df$predicted), data = pred_df, family = "binomial", na.action = na.omit)
-  predpr <- predict(caseControlGLM, predictionDF, allow.new.levels = T, type = c("response"))
-  caseControlroccurve <- pROC::roc(predictionDF$diagnosis ~ predpr, quiet=T, plot=F)
-  caseControlroccurveCI <- pROC::roc(predictionDF$diagnosis ~ predpr, ci=T, quiet=T)
-  # caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
-  
-  caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
-  caseControlOR <- exp(cbind("Odds ratio" = coef(caseControlGLM), confint.default(caseControlGLM, level = 0.95)))
-  if (as.numeric(strsplit(caseControlp,"")[[1]][1]) == 1){
-    caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
-  }else{
-    caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", 10*as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
-  }  
-  if (as.numeric(caseControlp) >= 0.001){
-    caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p = ", formatC(as.numeric(caseControlp), format = "g"))
-  }
-  caseControlAUCsummary <- paste0("AUC [95% CI] = ", format(round(as.numeric(caseControlroccurve$auc), 2), nsmall = 2), " [", format(round(as.numeric(caseControlroccurveCI$ci[1]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlroccurveCI$ci[3]), 2),nsmal = 2),"]")
-  caseControlORsummary <- caseControlpthresh
-  
-  label_disty = .13
-  minPRS <- min(pred_df$predicted)-(abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5*1.02)
-  maxPRS <- max(pred_df$predicted) + (abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5*1.02)
-  botLabLoc <- min(pred_df$predicted)-(abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5)
-  topLabLoc <- max(pred_df$predicted) + (abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*0.21)
-  
-  PredPlot <- PredPlot +
-    geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlAUCsummary, color="black", y_position = topLabLoc,tip_length=.03)+
-    geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlpthresh, color="black", y_position = botLabLoc,tip_length=-.03) +
-    scale_y_continuous(breaks = seq(-100,100, by=2), limits = c(minPRS,maxPRS))
-  return(PredPlot)
-}
 
 PredPlotLasso <- boxViolinPlot(pred_df = pred_df, predictionDF = predictionDF)
 PredPlotLasso
