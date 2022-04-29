@@ -30,6 +30,7 @@ library(glmmLasso)
 library(ggpubr)
 library(MixRF)
 library(caret)
+library(fmsb)
 '%ni%' <- Negate('%in%')
 
 ## metadata --###################################
@@ -517,6 +518,8 @@ boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
   predpr <- predict(caseControlGLM, avg_par_scores, allow.new.levels = T, type = c("response"))
   caseControlroccurve <- pROC::roc(avg_par_scores$actual ~ predpr, quiet=T, plot=T)
   caseControlroccurveCI <- pROC::roc(avg_par_scores$actual ~ predpr, ci=T, quiet=T)
+  nr2 <- NagelkerkeR2(caseControlGLM)$R2
+  print(nr2)
   # caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
   
   caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
