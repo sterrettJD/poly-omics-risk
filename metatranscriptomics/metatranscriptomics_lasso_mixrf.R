@@ -427,6 +427,7 @@ mymodsum
 
 
 ##--Extract feature weights--###########
+# make data frame of coefficients 
 mod_coef_df <- coef(mymodsum) %>% data.frame()
 
 covar_cols <- c("site_nameCincinnati",
@@ -440,16 +441,8 @@ covar_cols <- c("site_nameCincinnati",
                 "raceWhite",
                 "AntibioticsYes")
 
+# remove covariate rows from coefficient dataframe
 mod_coef_df_nocovar <- mod_coef_df[which(rownames(mod_coef_df) %ni% covar_cols),]
-
-
-mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ site_name + consent_age + sex + race + Antibiotics + (1|Participant_ID)"), 
-                     data = df_bestglm, 
-                     family = binomial)
-
-mod_coef_df_ONLYcovar <- as.data.frame(coef(summary(mymod_ONLYcovar)))
-
-mod_coef_df_ONLYcovar
 
 
 # prediction on reserved validation samples
@@ -460,23 +453,31 @@ predictionDF <- mergeytest[complete.cases(mergeytest),]
 predictionDF_vars <- predictionDF %>% 
   dplyr::select(rownames(mod_coef_df_nocovar)[2:nrow(mod_coef_df_nocovar)])
 
-predictionDF_ONLYcovars <- predictionDF %>% 
-  dplyr::select(rownames(mod_coef_df_ONLYcovar)[2:nrow(mod_coef_df_ONLYcovar)])
-
-
+# make a column for the intercept
 predictionDF_vars$Intercept <- 1
 
+# make intercept the first column
 predictionDF_vars <-predictionDF_vars %>% 
   dplyr::select(Intercept, everything())
 
 ##--predict the risk scores without covariates--########
 pred_risk_scores <- as.matrix(predictionDF_vars) %*% as.matrix(mod_coef_df_nocovar$Estimate)
 
-
+# combine the predicted and actual
 pred_df <- as.data.frame(cbind(predictionDF$diagnosis, scale(pred_risk_scores))); colnames(pred_df) <- c("actual", "predicted")
 pred_df$actual <- as.factor(pred_df$actual)
 
-null_model_predictions <- as.data.frame(cbind(predictionDF$diagnosis, scale(predict(mymod_ONLYcovar, predictionDF, allow.new.levels = T)))); colnames(pred_df) <- c("actual", "predicted")
+
+
+
+# null model with only covariates
+mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ site_name + consent_age + sex + race + Antibiotics + (1|Participant_ID)"), 
+                               data = df_bestglm, 
+                               family = binomial)
+
+# predict based on only covariates
+null_model_predictions <- as.data.frame(cbind(predictionDF$diagnosis, scale(predict(mymod_ONLYcovar, predictionDF, allow.new.levels = T))))
+colnames(null_model_predictions) <- c("actual", "predicted")
 
 
 
@@ -519,7 +520,7 @@ boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
   caseControlroccurve <- pROC::roc(avg_par_scores$actual ~ predpr, quiet=T, plot=T)
   caseControlroccurveCI <- pROC::roc(avg_par_scores$actual ~ predpr, ci=T, quiet=T)
   nr2 <- NagelkerkeR2(caseControlGLM)$R2
-  print(nr2)
+  print(paste0("Nagelkerke's R2: ", nr2))
   # caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
   
   caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
@@ -578,15 +579,8 @@ rownames(avg_par_scores) <- avg_par_scores$Participant_ID
 avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 
-mycovarstring <- paste0(c("site_name",
-                          "consent_age", 
-                          "sex", 
-                          "race" 
-                          #"Antibiotics"
-                          ), 
-                        collapse = " + ", sep = "")
-
 # diagnosis ~ score
+print("MODEL WITH ONLY FEATURES, NO COVARIATES")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlot
 
@@ -615,34 +609,11 @@ rownames(avg_par_scores) <- avg_par_scores$Participant_ID
 avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 
+print("NULL COVARIATE MODEL")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlot
 
 
-
-
-
-pred_df$site_name <- predictionDF$site_name
-pred_df$consent_age <- predictionDF$consent_age
-pred_df$sex <- predictionDF$sex
-pred_df$race <- predictionDF$race
-pred_df$Antibiotics <- predictionDF$Antibiotics
-
-
-
-PredPlotwCovs <- boxViolinPlot(pred_df = pred_df, predictionDF = predictionDF, covars=mycovarstring)
-PredPlotwCovs
-
-
-
-
-##--Assess predictions with covariates and features--###########
-pred_df <- as.data.frame(cbind(predictionDF$diagnosis, scale(predict(mymod, predictionDF, allow.new.levels = T)))); colnames(pred_df) <- c("actual", "predicted")
-pred_df$actual <- as.factor(pred_df$actual)
-# make a violin plot of the prediction
-
-PredPlotLasso <- boxViolinPlot(pred_df = pred_df, predictionDF = predictionDF)
-PredPlotLasso
 
 # ## Mixed Effects Random Forests via MixRF ######################################################
 
