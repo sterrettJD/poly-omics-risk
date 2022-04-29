@@ -506,8 +506,8 @@ boxViolinPlot <- function(pred_df = pred_df, predictionDF = predictionDF){
   return(PredPlot)
 }
 
-PredPlotLasso <- boxViolinPlot(pred_df = pred_df, predictionDF = predictionDF)
-PredPlotLasso
+PredPlot <- boxViolinPlot(pred_df = pred_df, predictionDF = predictionDF)
+PredPlot
 
 
 
