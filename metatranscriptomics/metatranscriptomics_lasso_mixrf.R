@@ -371,11 +371,19 @@ train_df <- cbind(data.new,
 
 dim(train_df)
 
+varlist_nocolin <- c(varlist[which(varlist %in% colnames(train_df))], 
+                    "site_name", 
+                    "sex", 
+                    "race", 
+                    "Antibiotics")
+varstring_nocolin <- paste0(varlist_nocolin, collapse = " + ", sep = "")
+
+
 numvariables <- c()
 lambdavec <- seq(from = 10, to = 110, by = 5)
 for(lambdy in lambdavec){
-  lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
-                   data = traindf,
+  lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
+                   data = train_df,
                    rnd = list(Participant_ID=~1),
                    lambda=lambdy,
                    family = binomial(link = "logit"))
@@ -389,7 +397,7 @@ plot(x = lambdavec, y = numvariables)
 
 lassoFeatures
 
-lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
+lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
                  data = traindf, 
                  rnd = list(Participant_ID=~1),
                  lambda=25,
@@ -397,8 +405,8 @@ lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
 summary(lm1)
 lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
 lassoFeatures <- lassoFeatures[grep("Participant_ID|site_name|diagnosis|consent_age|sex|race|Antibiotics|Intercept", lassoFeatures, invert = T)]
-# lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
-lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race"))
+lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
+
 
 ## Prediction Boxplot and AUC for LASSO ######################################################
 
@@ -416,6 +424,7 @@ mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Partici
 mymodsum <- summary(mymod)
 mymodsum
 
+
 ##--Extract feature weights--###########
 mod_coef_df <- coef(mymodsum) %>% data.frame()
 
@@ -427,11 +436,10 @@ covar_cols <- c("site_nameCincinnati",
                 "sexMale",
                 "raceMore than one race",
                 "raceOther",
-                "raceWhite")
+                "raceWhite",
+                "AntibioticsYes")
 
 mod_coef_df_nocovar <- mod_coef_df[which(rownames(mod_coef_df) %ni% covar_cols),]
-
-rownames(mod_coef_df_nocovar)[2:nrow(mod_coef_df_nocovar)]
 
 
 
