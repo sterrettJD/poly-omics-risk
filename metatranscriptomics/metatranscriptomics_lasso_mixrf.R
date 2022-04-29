@@ -614,6 +614,11 @@ PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlot
 
 
+pred_df
+metatranscriptomics_pred_score_featuresonly <- tibble::rownames_to_column(pred_df, "External_ID")
+write.table(metatranscriptomics_pred_score_featuresonly, "metatranscriptomics_features_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+
+
 
 # ## Mixed Effects Random Forests via MixRF ######################################################
 
