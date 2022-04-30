@@ -1,6 +1,6 @@
-setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
+# setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
 #setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
-
+setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
 
 list.files()
 
@@ -171,14 +171,14 @@ head(namesies)
 namesiessep <- namesies
 colnames(clr_num_grouped_df_3) <- namesiessep$namesies
 
-intersecty <- intersect(c(as.character(namesiessep$namesies)), 
-                        c(as.character(metadata1$`External ID`))
-)
+# intersecty <- intersect(c(as.character(namesiessep$namesies)), 
+#                         c(as.character(metadata1$`External ID`))
+# )
 
 #View(intersecty)
 dim(namesiessep)
-dim(metadata1)
-length(intersecty)
+# dim(metadata1)
+# length(intersecty)
 
 
 
@@ -434,9 +434,15 @@ pred_df$actual <- as.factor(pred_df$actual)
 
 
 # null model with only covariates
-mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ site_name + consent_age + sex + race + Antibiotics + (1|Participant_ID)"), 
-                               data = df_bestglm, 
+mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ (1|site_name) + consent_age + sex + race + Antibiotics + (1|Participant_ID)"),
+                               data = df_bestglm, #[sample(1:nrow(df_bestglm),round(nrow(df_bestglm)*.6)),], 
                                family = binomial)
+
+# library(brglm2)
+# library(detectseparation)
+# glm(as.formula("diagnosis ~ site_name + consent_age + sex + race + Antibiotics"), 
+#                                   data = df_bestglm, 
+#                        family = binomial, method="detect_separation")
 
 # predict based on only covariates
 null_model_predictions <- as.data.frame(cbind(predictionDF$diagnosis, scale(predict(mymod_ONLYcovar, predictionDF, allow.new.levels = T))))
