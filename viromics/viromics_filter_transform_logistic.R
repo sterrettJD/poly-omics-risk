@@ -1,6 +1,6 @@
 # setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
 #setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
-setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
+setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/viromics/")
 
 list.files()
 
