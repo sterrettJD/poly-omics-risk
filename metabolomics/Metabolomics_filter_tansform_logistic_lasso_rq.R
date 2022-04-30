@@ -1,6 +1,6 @@
 
-setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
-
+# setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
+setwd("/home/romulo/Polyomic_project/poly-omics-risk/metabolomics")
 list.files()
 
 # install.packages("data.table")
@@ -44,11 +44,15 @@ library(foreign)
 #install.packages(urlPackage, repos=NULL, type="source")
 library(MixRF)
 library(caret)
+library(fmsb)
+# install.packages("fmsb")
 library(randomForest)
 `%ni%` <- Negate(`%in%`)
 
 ## metadata --###################################
-metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+# metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+metadata <- fread("hmp2_metadata.csv", header=T, stringsAsFactors=T)
+
 str(metadata)
 # metadata <- subset(metadata, data_type == "metagenomics")
 
@@ -91,7 +95,7 @@ metadata <- subset(metadata, data_type == "metabolomics")
 # metadata <- subset(metadata, `External ID` %in% idlist)
 
 # fill missinig enries with NA and view the columns that are mostly non-NA
-metadata[metadata==" "] <- "NA"
+# metadata[metadata==""] <- "NA"
 isna <- sapply(metadata, function(x) sum(is.na(x)))
 isna[isna < 100]
 summary(metadata$diagnosis)
@@ -151,8 +155,8 @@ summary(training_metadata$race)
 
 ## Metabolomics HMP2_metabolomics --###################################
 # fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/WGS/1818/taxonomic_profiles_3.tsv.gz", header=T)
-fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metabolites/1723/HMP2_metabolomics.csv.gz", header=T)
-# fname <- fread("pathabundances_3.tsv.gz", header=T)
+# fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metabolites/1723/HMP2_metabolomics.csv.gz", header=T)
+fname <- fread("HMP2_metabolomics.csv.gz", header=T)
 fname <- as.data.frame(fname)
 # data_glimpse(fname = fname, UNINTEGRATED = F, thresh = 0.8, normalize = T, myTitle = "Metatranscriptomes pathabundances_3")
 df_3 <- fname
@@ -176,14 +180,29 @@ hist(alldf$alldf[alldf$alldf])
 
 num_grouped_df_3 <- df_3
 
+percMissing <- rowSums(num_grouped_df_3==0)/ncol(num_grouped_df_3)*100
+hist(percMissing)
+length(percMissing)
+length(which(percMissing>5))
+length(which(percMissing>1))
+
+num_grouped_df_3 <- num_grouped_df_3[which(percMissing<1),]
+
+
 # add epsilon to all entries to set up for center log transform
 pepsi <- 1E-06
 num_grouped_df_3 <- num_grouped_df_3 + pepsi
 
 ## CLT transform --###################################
+# 1 for presence and 0 for absence
+# num_grouped_df_3[num_grouped_df_3 > 0] <- 1
+# num_grouped_df_3[num_grouped_df_3 == 0] <- 0
+
 # transform by center log transform across rows (features)
-clr_num_grouped_df_3 <- compositions::clr(num_grouped_df_3,)
-# clr_num_grouped_df_3 <- as.data.frame(apply(num_grouped_df_3, 1, clr))
+# clr_num_grouped_df_3 <- compositions::clr(num_grouped_df_3)
+clr_num_grouped_df_3 <- log10(num_grouped_df_3)
+# clr_num_grouped_df_3 <- num_grouped_df_3
+
 
 alldf_pretransform <- as.data.frame(as.numeric(array(as.matrix(num_grouped_df_3)))); colnames(alldf_pretransform) <- c("alldf_pretransform")
 hist(alldf_pretransform$alldf_pretransform)
@@ -276,45 +295,83 @@ colnames(mergey) <- cn
 
 ## run LASSO regression for all features --###################################
 ## linear mixed model
-# mergey$diagnosis <- as.integer(as.character(mergey$diagnosis))
-# # mergey$diagnosis <- as.numeric(mergey$diagnosis)
-# mergey$site_name <- as.factor(mergey$site_name)
-# mergey$consent_age <- as.numeric(mergey$consent_age)
-# mergey$`Participant_ID` <- as.factor(mergey$`Participant_ID`)
-# mergey$sex <- as.factor(mergey$sex)
-# mergey$race <- as.factor(mergey$race)
-# mergey$Antibiotics <- as.factor(mergey$Antibiotics)
-# 
-# str(mergey[,1:30])
-# str(mergey[,(ncol(mergey)-30):ncol(mergey)])
-# 
-# traindf <- as.data.frame(mergey[complete.cases(mergey),])
-# traindf$diagnosis <- as.integer(as.character(traindf$diagnosis))
-# # traindf$diagnosis <- as.numeric(traindf$diagnosis)
-# traindf$site_name <- as.factor(traindf$site_name)
-# traindf$consent_age <- as.numeric(traindf$consent_age)
-# traindf$`Participant_ID` <- as.factor(traindf$`Participant_ID`)
-# traindf$sex <- as.factor(traindf$sex)
-# traindf$race <- as.factor(traindf$race)
-# traindf$Antibiotics <- as.factor(traindf$Antibiotics)
-# 
-# dim(traindf)
-# dim(mergey)
-# varlist <- cn[which(cn %ni% c("diagnosis", "Participant_ID"))]
-# 
-# for(i in 1:length(varlist)){
-#   if(varlist[i] %in% c("site_name", "sex", "race", "Antibiotics")){
-#     varlist[i] <- paste0("as.factor(",varlist[i],")")
-#   }
-# }
-# # varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
-# varstring <- paste0(varlist, collapse = " + ", sep = "")
-# 
-# ## LASSO Lambda Search ######################################################
-# 
-# numvariables <- c()
-# lambdavec <- seq(from = 40, to = 110, by = 5)
+mergey$diagnosis <- as.integer(as.character(mergey$diagnosis))
+# mergey$diagnosis <- as.numeric(mergey$diagnosis)
+mergey$site_name <- as.factor(mergey$site_name)
+mergey$consent_age <- as.numeric(mergey$consent_age)
+mergey$`Participant_ID` <- as.factor(mergey$`Participant_ID`)
+mergey$sex <- as.factor(mergey$sex)
+mergey$race <- as.factor(mergey$race)
+mergey$Antibiotics <- as.factor(mergey$Antibiotics)
+
+str(mergey[,1:30])
+str(mergey[,(ncol(mergey)-30):ncol(mergey)])
+
+traindf <- as.data.frame(mergey[complete.cases(mergey),])
+traindf$diagnosis <- as.integer(as.character(traindf$diagnosis))
+# traindf$diagnosis <- as.numeric(traindf$diagnosis)
+traindf$site_name <- as.factor(traindf$site_name)
+traindf$consent_age <- as.numeric(traindf$consent_age)
+traindf$`Participant_ID` <- as.factor(traindf$`Participant_ID`)
+traindf$sex <- as.factor(traindf$sex)
+traindf$race <- as.factor(traindf$race)
+traindf$Antibiotics <- as.factor(traindf$Antibiotics)
+
+dim(traindf)
+dim(mergey)
+varlist <- cn[which(cn %ni% c("diagnosis", "Participant_ID"))]
+
+for(i in 1:length(varlist)){
+  if(varlist[i] %in% c("site_name", "sex", "race", "Antibiotics")){
+    varlist[i] <- paste0("as.factor(",varlist[i],")")
+  }
+}
+# varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
+varstring <- paste0(varlist, collapse = " + ", sep = "")
+
+## LASSO Lambda Search ######################################################
+
+# non_pwy_data <- c(Participant_ID,site_name,diagnosis,consent_age,sex,race,Antibiotics)
+
+pwy_df <- traindf%>% dplyr::select( -Participant_ID,
+                                    -site_name,
+                                    -diagnosis,
+                                    -consent_age,
+                                    -sex,
+                                    -race,
+                                    -Antibiotics)
+
+tmp <- cor(pwy_df)
+tmp[upper.tri(tmp)] <- 0
+diag(tmp) <- 0
+
+# Above two commands can be replaced with
+# tmp[!lower.tri(tmp)] <- 0
+
+data.new <-
+  pwy_df[, !apply(tmp, 2, function(x) any(abs(x) > 8, na.rm = TRUE))]
+head(data.new)
+
+dim(data.new)
+dim(pwy_df)
+
+traindf <- cbind(data.new,
+                  traindf%>% dplyr::select(Participant_ID,
+                                           site_name,
+                                           diagnosis,
+                                           consent_age,
+                                           sex,
+                                           race,
+                                           Antibiotics)) %>%
+  as.data.frame()
+
+dim(traindf)
+
+
+numvariables <- c()
+lambdavec <- seq(from = 38, to = 43, by = .5)
 # for(lambdy in lambdavec){
+#   print(lambdy)
 #   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
 #                    data = traindf,
 #                    rnd = list(Participant_ID=~1),
@@ -327,105 +384,237 @@ colnames(mergey) <- cn
 #   numvariables <- c(numvariables, length(lassoFeatures))
 # }
 # plot(x = lambdavec, y = numvariables)
-# 
-# lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
-#                  data = traindf, 
-#                  rnd = list(Participant_ID=~1),
-#                  lambda=100,
-#                  family = binomial(link = "logit"))
-# summary(lm1)
-# lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
-# # lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)", "sexMale")]
-# lassoFeatures <- lassoFeatures[grep("Participant_ID|site_name|diagnosis|consent_age|sex|race|Antibiotics|Intercept", lassoFeatures, invert = T)]
-# # lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
+# stop()
+lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
+                 data = traindf,
+                 rnd = list(Participant_ID=~1),
+                 lambda=41.5,
+                 family = binomial(link = "logit"))
+summary(lm1)
+lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
+# lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)", "sexMale")]
+lassoFeatures <- lassoFeatures[grep("Participant_ID|site_name|diagnosis|consent_age|sex|race|Antibiotics|Intercept", lassoFeatures, invert = T)]
+lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
 # lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race"))
 # 
 # ## Prediction Boxplot and AUC for LASSO ######################################################
-# df_bestglm <- as.data.frame(traindf[,c(lassoFeatures)])
-# df_bestglm$diagnosis <- as.factor(as.character(df_bestglm$diagnosis))
-# summary(df_bestglm$diagnosis)
-# 
-# varlist2 <- names(df_bestglm)[which(names(df_bestglm) %ni% c("diagnosis", "Participant_ID"))]
-# # varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
-# varstring2 <- paste0(varlist2, collapse = " + ", sep = "")
-# 
-# mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Participant_ID)")), 
-#                      data = df_bestglm, 
-#                      family = binomial)
-# mymodsum <- summary(mymod)
-# # prediction on reserved validation samples
-# # filter prediction dataframe to only complete cases
-# predictionDF <- mergeytest[complete.cases(mergeytest),]
-# pred_df <- as.data.frame(cbind(predictionDF$diagnosis, scale(predict(mymod, predictionDF, allow.new.levels = T)))); colnames(pred_df) <- c("actual", "predicted")
-# pred_df$actual <- as.factor(pred_df$actual)
-# # make a violin plot of the prediction
-# boxViolinPlot <- function(pred_df = pred_df, predictionDF = predictionDF){
-#   PredPlot <- ggplot(data = pred_df, aes(x = actual, y = predicted))+
-#     scale_fill_viridis_d( option = "D")+
-#     theme_dark()+
-#     geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
-#     geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
-#     theme(plot.title = element_text(hjust = 0.5))+
-#     # theme(axis.title.x = element_text(size=14))+
-#     theme(axis.text.x = element_text(colour = "black"))+
-#     theme(axis.text.y = element_text(colour = "black"))+
-#     theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
-#     theme(panel.grid.major.x = element_blank())+
-#     theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
-#     # labs(title = addToTitle)+
-#     ylab("Score")+
-#     xlab("Actual Diagnosis")
-#   
-#   pred_df$actual <- as.factor(pred_df$actual)
-#   pred_df$predicted <- as.numeric(pred_df$predicted)
-#   caseControlGLM <- glm(as.formula(pred_df$actual ~ pred_df$predicted), data = pred_df, family = "binomial", na.action = na.omit)
-#   predpr <- predict(caseControlGLM, predictionDF, allow.new.levels = T, type = c("response"))
-#   caseControlroccurve <- pROC::roc(predictionDF$diagnosis ~ predpr, quiet=T, plot=F)
-#   caseControlroccurveCI <- pROC::roc(predictionDF$diagnosis ~ predpr, ci=T, quiet=T)
-#   # caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
-#   
-#   caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
-#   caseControlOR <- exp(cbind("Odds ratio" = coef(caseControlGLM), confint.default(caseControlGLM, level = 0.95)))
-#   if (as.numeric(strsplit(caseControlp,"")[[1]][1]) == 1){
-#     caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
-#   }else{
-#     caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", 10*as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
-#   }  
-#   if (as.numeric(caseControlp) >= 0.001){
-#     caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p = ", formatC(as.numeric(caseControlp), format = "g"))
-#   }
-#   caseControlAUCsummary <- paste0("AUC [95% CI] = ", format(round(as.numeric(caseControlroccurve$auc), 2), nsmall = 2), " [", format(round(as.numeric(caseControlroccurveCI$ci[1]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlroccurveCI$ci[3]), 2),nsmal = 2),"]")
-#   caseControlORsummary <- caseControlpthresh
-#   
-#   label_disty = .13
-#   minPRS <- min(pred_df$predicted)-(abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5*1.02)
-#   maxPRS <- max(pred_df$predicted) + (abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5*1.02)
-#   botLabLoc <- min(pred_df$predicted)-(abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5)
-#   topLabLoc <- max(pred_df$predicted) + (abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*0.21)
-#   
-#   PredPlot <- PredPlot +
-#     geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlAUCsummary, color="black", y_position = topLabLoc,tip_length=.03)+
-#     geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlpthresh, color="black", y_position = botLabLoc,tip_length=-.03) +
-#     scale_y_continuous(breaks = seq(-100,100, by=2), limits = c(minPRS,maxPRS))
-#   return(PredPlot)
-# }
-# 
-# PredPlotLasso <- boxViolinPlot(pred_df = pred_df, predictionDF = predictionDF)
-# PredPlotLasso
+df_bestglm <- as.data.frame(traindf[,c(lassoFeatures)])
+df_bestglm$diagnosis <- as.factor(as.character(df_bestglm$diagnosis))
+summary(df_bestglm$diagnosis)
+
+varlist2 <- names(df_bestglm)[which(names(df_bestglm) %ni% c("diagnosis", "Participant_ID"))]
+# varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
+varstring2 <- paste0(varlist2, collapse = " + ", sep = "")
+
+mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Participant_ID)")),
+                     data = df_bestglm,
+                     family = binomial)
+mymodsum <- summary(mymod)
+
+##--Extract feature weights--###########
+# make data frame of coefficients 
+mod_coef_df <- coef(mymodsum) %>% data.frame()
+
+covar_cols <- c("site_nameCincinnati",
+                "site_nameEmory",                                                                  
+                "site_nameMGH",
+                "site_nameMGH Pediatrics",
+                "consent_age",
+                "sexMale",
+                "raceMore than one race",
+                "raceOther",
+                "raceWhite",
+                "AntibioticsYes")
+
+# remove covariate rows from coefficient dataframe
+mod_coef_df_nocovar <- mod_coef_df[which(rownames(mod_coef_df) %ni% covar_cols),]
+
+
+# prediction on reserved validation samples
+# filter prediction dataframe to only complete cases
+predictionDF <- mergeytest[complete.cases(mergeytest),]
+
+# grab only the columns that we have coefs for (starting at index 2 removes the intercept)
+predictionDF_vars <- predictionDF %>% 
+  dplyr::select(rownames(mod_coef_df_nocovar)[2:nrow(mod_coef_df_nocovar)])
+
+# make a column for the intercept
+predictionDF_vars$Intercept <- 1
+
+# make intercept the first column
+predictionDF_vars <-predictionDF_vars %>% 
+  dplyr::select(Intercept, everything())
+
+##--predict the risk scores without covariates--########
+pred_risk_scores <- as.matrix(predictionDF_vars) %*% as.matrix(mod_coef_df_nocovar$Estimate)
+
+# combine the predicted and actual
+pred_df <- as.data.frame(cbind(predictionDF$diagnosis, scale(pred_risk_scores))); colnames(pred_df) <- c("actual", "predicted")
+pred_df$actual <- as.factor(pred_df$actual)
+
+
+
+
+# null model with only covariates
+mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ site_name + consent_age + sex + race + Antibiotics + (1|Participant_ID)"), 
+                               data = df_bestglm, 
+                               family = binomial)
+
+# predict based on only covariates
+null_model_predictions <- as.data.frame(cbind(predictionDF$diagnosis, scale(predict(mymod_ONLYcovar, predictionDF, allow.new.levels = T))))
+colnames(null_model_predictions) <- c("actual", "predicted")
+
+
+
+
+# make a violin plot of the prediction
+boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
+  
+  auc_df$actual <- as.factor(auc_df$actual)
+  auc_df$predicted <- as.numeric(auc_df$predicted)
+  PredPlot <- ggplot(data = auc_df, aes(x = actual, y = predicted))+
+    scale_fill_viridis_d( option = "D")+
+    theme_dark()+
+    geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
+    geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
+    theme(plot.title = element_text(hjust = 0.5))+
+    # theme(axis.title.x = element_text(size=14))+
+    theme(axis.text.x = element_text(colour = "black"))+
+    theme(axis.text.y = element_text(colour = "black"))+
+    theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
+    theme(panel.grid.major.x = element_blank())+
+    theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
+    # labs(title = addToTitle)+
+    ylab("Score")+
+    xlab("Actual Diagnosis")
+  
+  
+  
+  
+  if(covars==""){
+    caseControlGLM <- glm(as.formula(auc_df$actual ~ auc_df$predicted), data = auc_df, family = "binomial", na.action = na.omit)
+  } else if(covars_only==F){
+    caseControlGLM <- glm(as.formula(paste0("actual ~ auc_df$predicted + ",mycovarstring)), data = auc_df, family = "binomial", na.action = na.omit)
+  } else if(covars_only==T){
+    caseControlGLM <- glm(as.formula(paste0("actual ~ ", mycovarstring)), data = auc_df, family = "binomial", na.action = na.omit)
+  }
+  
+  
+  
+  predpr <- predict(caseControlGLM, avg_par_scores, allow.new.levels = T, type = c("response"))
+  caseControlroccurve <- pROC::roc(avg_par_scores$actual ~ predpr, quiet=T, plot=T)
+  caseControlroccurveCI <- pROC::roc(avg_par_scores$actual ~ predpr, ci=T, quiet=T)
+  nr2 <- NagelkerkeR2(caseControlGLM)$R2
+  print(paste0("Nagelkerke's R2: ", nr2))
+  # caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
+  
+  caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
+  caseControlOR <- exp(cbind("Odds ratio" = coef(caseControlGLM), confint.default(caseControlGLM, level = 0.95)))
+  if (as.numeric(strsplit(caseControlp,"")[[1]][1]) == 1){
+    caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
+  }else{
+    caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", 10*as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
+  }  
+  if (as.numeric(caseControlp) >= 0.001){
+    caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p = ", formatC(as.numeric(caseControlp), format = "g"))
+  }
+  caseControlAUCsummary <- paste0("AUC [95% CI] = ", format(round(as.numeric(caseControlroccurve$auc), 2), nsmall = 2), " [", format(round(as.numeric(caseControlroccurveCI$ci[1]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlroccurveCI$ci[3]), 2),nsmal = 2),"]")
+  caseControlORsummary <- caseControlpthresh
+  
+  label_disty = .13
+  minPRS <- min(auc_df$predicted)-(abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*1.5*1.02)
+  maxPRS <- max(auc_df$predicted) + (abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*1.5*1.02)
+  botLabLoc <- min(auc_df$predicted)-(abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*1.5)
+  topLabLoc <- max(auc_df$predicted) + (abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*0.21)
+  
+  plot_df <- as.data.frame(cbind(caseControlGLM$fitted.values, auc_df$actual))
+  
+  colnames(plot_df) <- c("predicted", "actual")
+  plot_df$actual <- as.factor(plot_df$actual)
+  
+  
+  
+  
+  
+  PredPlot <- PredPlot +
+    geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlAUCsummary, color="black", y_position = topLabLoc,tip_length=.03)+
+    geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlpthresh, color="black", y_position = botLabLoc,tip_length=-.03) +
+    scale_y_continuous(breaks = seq(-100,100, by=2), limits = c(minPRS,maxPRS))
+  
+  print(caseControlAUCsummary)
+  print(caseControlpthresh)
+  return(PredPlot)
+}
+
+m_pred_df <- merge(pred_df,predictionDF[,c("Participant_ID","diagnosis", "site_name", "consent_age", "sex", "race", "Antibiotics")], by="row.names")
+rownames(m_pred_df) <- m_pred_df$Row.names
+
+avg_par_scores <- m_pred_df %>% 
+  group_by(Participant_ID) %>%
+  summarize(actual = first(diagnosis), 
+            predicted = mean(predicted),
+            site_name = first(site_name),
+            consent_age = first(consent_age),
+            sex = first(sex),
+            race = first(race),
+            Antibiotics = first(Antibiotics)
+  )
+avg_par_scores <- as.data.frame(avg_par_scores)
+rownames(avg_par_scores) <- avg_par_scores$Participant_ID
+avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
+
+
+# diagnosis ~ score
+print("MODEL WITH ONLY FEATURES, NO COVARIATES")
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+PredPlot
+
+
+# null model
+
+null_model_predictions <- null_model_predictions %>% as.data.frame()
+colnames(null_model_predictions) <- c("actual", "predicted")
+null_model_predictions$actual <- as.factor(null_model_predictions$actual)
+
+m_pred_df <- merge(null_model_predictions,predictionDF[,c("Participant_ID","diagnosis", "site_name", "consent_age", "sex", "race", "Antibiotics")], by="row.names")
+rownames(m_pred_df) <- m_pred_df$Row.names
+
+avg_par_scores <- m_pred_df %>% 
+  group_by(Participant_ID) %>%
+  summarize(actual = first(diagnosis), 
+            predicted = mean(predicted),
+            site_name = first(site_name),
+            consent_age = first(consent_age),
+            sex = first(sex),
+            race = first(race),
+            Antibiotics = first(Antibiotics)
+  )
+avg_par_scores <- as.data.frame(avg_par_scores)
+rownames(avg_par_scores) <- avg_par_scores$Participant_ID
+avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
+
+
+print("NULL COVARIATE MODEL")
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+PredPlot
+
+
+pred_df
+metatranscriptomics_pred_score_featuresonly <- tibble::rownames_to_column(pred_df, "External_ID")
+write.table(metatranscriptomics_pred_score_featuresonly, "metabolomics_features_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+
+
 
 # ## Mixed Effects Random Forests via MixRF ######################################################
-library(dplyr)
-mergey_fac = mergey %>% mutate_if(is.character, as.factor)
-# traindf <- as.data.frame(mergey[complete.cases(mergey),])
-mergey_fac <- as.data.frame(mergey_fac[complete.cases(mergey_fac),])
-myX <- as.data.frame(mergey_fac[,names(mergey_fac) %ni% c("diagnosis", "Participant_ID")])
+
+myX <- as.data.frame(df_bestglm[,names(df_bestglm) %ni% c("diagnosis", "Participant_ID")])
 
 myMixRF <- MixRF::MixRF(
-  Y = as.numeric(pull(mergey_fac, diagnosis)),
-  X = myX,  
+  Y = as.numeric(pull(df_bestglm, diagnosis)),
+  X = myX,
   random = "(1|Participant_ID)",
   MaxIterations = 10,
-  data = mergey_fac
+  data = df_bestglm
 )
 
 # ## RF Variable Importance ######################################################
@@ -434,10 +623,6 @@ df_tmp <- caret::varImp(myMixRF$forest)
 newdf <- df_tmp; colnames(newdf) <- c("imp")
 # newdf <- data.frame(cbind(df_tmp$Overall)); colnames(newdf) <- c("imp"); rownames(newdf) <- rownames(df_tmp)
 newdf$imp <- as.numeric(newdf$imp)
-reorder <- order(newdf$imp, decreasing = T)
-newdf <- as.data.frame(newdf[reorder,]); 
-newdf <- as.data.frame(newdf[1:20,]); colnames(newdf) <- c("imp")
-rownames(newdf) <- rownames(df_tmp)[reorder[1:20]]
 df2 <- newdf %>%
   tibble::rownames_to_column() %>%
   dplyr::rename("variable" = rowname) %>%
@@ -487,6 +672,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
   )
 plot_varimp2
 
+
 levels(mergeytest[["sex"]])
 levels(myX[["sex"]])
 levels(mergeytest[["site_name"]])
@@ -506,7 +692,7 @@ str(predictionDF[,common])
 str(myX[,common])
 
 # make the factors match between testing and training
-myX$diagnosis <- as.numeric(pull(mergey_fac, diagnosis))
+myX$diagnosis <- as.numeric(pull(df_bestglm, diagnosis))
 predictionDF <- predictionDF[,c(common,"diagnosis")]
 predictionDF <- rbind(myX[1, ] , predictionDF)
 predictionDF <- predictionDF[-1,]
@@ -521,67 +707,18 @@ colnames(comparePrediction) <- c("actual", "predicted")
 (comparePrediction$actual == comparePrediction$prediction)
 summary((comparePrediction$actual == comparePrediction$prediction))
 # View(comparePrediction)
-boxViolinPlot <- function(pred_df = pred_df, predictionDF = predictionDF){
-  PredPlot <- ggplot(data = pred_df, aes(x = actual, y = predicted))+
-    scale_fill_viridis_d( option = "D")+
-    theme_dark()+
-    geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
-    geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
-    theme(plot.title = element_text(hjust = 0.5))+
-    # theme(axis.title.x = element_text(size=14))+
-    theme(axis.text.x = element_text(colour = "black"))+
-    theme(axis.text.y = element_text(colour = "black"))+
-    theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
-    theme(panel.grid.major.x = element_blank())+
-    theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
-    # labs(title = addToTitle)+
-    ylab("Score")+
-    xlab("Actual Diagnosis")
-  
-  pred_df$actual <- as.factor(pred_df$actual)
-  pred_df$predicted <- as.numeric(pred_df$predicted)
-  caseControlGLM <- glm(as.formula(pred_df$actual ~ pred_df$predicted), data = pred_df, family = "binomial", na.action = na.omit)
-  predpr <- predict(caseControlGLM, predictionDF, allow.new.levels = T, type = c("response"))
-  caseControlroccurve <- pROC::roc(predictionDF$diagnosis ~ predpr, quiet=T, plot=F)
-  caseControlroccurveCI <- pROC::roc(predictionDF$diagnosis ~ predpr, ci=T, quiet=T)
-  # caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
-  
-  caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
-  caseControlOR <- exp(cbind("Odds ratio" = coef(caseControlGLM), confint.default(caseControlGLM, level = 0.95)))
-  if (as.numeric(strsplit(caseControlp,"")[[1]][1]) == 1){
-    caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
-  }else{
-    caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", 10*as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
-  }  
-  if (as.numeric(caseControlp) >= 0.001){
-    caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p = ", formatC(as.numeric(caseControlp), format = "g"))
-  }
-  caseControlAUCsummary <- paste0("AUC [95% CI] = ", format(round(as.numeric(caseControlroccurve$auc), 2), nsmall = 2), " [", format(round(as.numeric(caseControlroccurveCI$ci[1]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlroccurveCI$ci[3]), 2),nsmal = 2),"]")
-  caseControlORsummary <- caseControlpthresh
-  
-  label_disty = .13
-  minPRS <- min(pred_df$predicted)-(abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5*1.02)
-  maxPRS <- max(pred_df$predicted) + (abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5*1.02)
-  botLabLoc <- min(pred_df$predicted)-(abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*1.5)
-  topLabLoc <- max(pred_df$predicted) + (abs(max(pred_df$predicted)-min(pred_df$predicted)))*(label_disty*0.21)
-  
-  PredPlot <- PredPlot +
-    geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlAUCsummary, color="black", y_position = topLabLoc,tip_length=.03)+
-    geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlpthresh, color="black", y_position = botLabLoc,tip_length=-.03) +
-    scale_y_continuous(breaks = seq(-100,100, by=2), limits = c(minPRS,maxPRS))
-  return(PredPlot)
-}
-
 
 PredPlotRF <- boxViolinPlot(pred_df = comparePrediction, predictionDF = predictionDF)
 PredPlotRF
 
-# metabolomics_glmer_scores <- pred_df
-# metabolomics_glmer_scores <- tibble::rownames_to_column(metagenomics_glmer_scores, "External_ID")
-# write.table(metagenomics_glmer_scores, "metabolomics_glmer_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
-metabolomics_MixRF_scores <- comparePrediction
-metabolomics_MixRF_scores <- tibble::rownames_to_column(metabolomics_MixRF_scores, "External_ID")
-write.table(metabolomics_MixRF_scores, "metabolomics_MixRF_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+
+metatranscriptomics_glmer_scores <- pred_df
+metatranscriptomics_glmer_scores <- tibble::rownames_to_column(metatranscriptomics_glmer_scores, "External_ID")
+write.table(metatranscriptomics_glmer_scores, "metatranscriptomics_glmer_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+metatranscriptomics_MixRF_scores <- comparePrediction
+metatranscriptomics_MixRF_scores <- tibble::rownames_to_column(metatranscriptomics_MixRF_scores, "External_ID")
+write.table(metatranscriptomics_MixRF_scores, "metatranscriptomics_MixRF_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+
 
 # #---make a regression tree---#########################################################################################################################################################################
 # 
