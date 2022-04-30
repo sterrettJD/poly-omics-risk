@@ -584,6 +584,8 @@ print("MODEL WITH ONLY FEATURES, NO COVARIATES")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlot
 
+ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
+
 
 # null model
 
@@ -613,11 +615,73 @@ print("NULL COVARIATE MODEL")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlot
 
+ggsave("pred_null.png", width=2.5, height=2.5, units="in", dpi=320)
+
 
 pred_df
 metatranscriptomics_pred_score_featuresonly <- tibble::rownames_to_column(pred_df, "External_ID")
 write.table(metatranscriptomics_pred_score_featuresonly, "metatranscriptomics_features_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
 
+# remove the intercept
+featureplot_df <- mod_coef_df_nocovar[2:nrow(featureplot_df),]
+featureplot_df$Feature <- rownames(featureplot_df)
+featureplot_df <- featureplot_df %>% dplyr::arrange(Estimate)
+
+
+featureplot_df %>% 
+  ggplot(mapping = aes(y=Feature, x=Estimate)) +
+  geom_point()
+
+# make our plotting dataframe
+df2 <- featureplot_df %>%
+  tibble::rownames_to_column() %>%
+  dplyr::rename("variable" = rowname) %>%
+  dplyr::arrange(Estimate) %>%
+  dplyr::mutate(variable = forcats::fct_inorder(variable))
+
+plot_varimp2 <- ggplot2::ggplot(df2) +
+  geom_segment(
+    aes(
+      x = variable,
+      y = 0,
+      xend = variable,
+      yend = Estimate
+    ),
+    size = 1.5,
+    alpha = 0.7
+  ) +
+  geom_point(aes(x = variable, y = Estimate, col = variable),
+             size = 4,
+             show.legend = F) +
+  coord_flip() +
+  labs(y = "Weight", x = NULL, title = "") +
+  theme_bw() +
+  theme(legend.title = element_text(size = 14)) +
+  theme(
+    axis.text.x = element_text(
+      color = "black",
+      size = 13,
+      angle = 0,
+      hjust = .5,
+      vjust = .5
+    ),
+    axis.text.y = element_text(
+      color = "black",
+      size = length(unique(df2$variable))*1/3,
+      angle = 0
+    ),
+    axis.title.x = element_text(
+      color = "black",
+      size = 13,
+      angle = 0
+    ),
+    axis.title.y = element_text(
+      color = "black",
+      size = 13,
+      angle = 90
+    )
+  )
+plot_varimp2
 
 
 # ## Mixed Effects Random Forests via MixRF ######################################################
