@@ -378,7 +378,8 @@ ggplot(data = pred_df, aes(x = actual, y = predicted))+
   theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
   # labs(title = addToTitle)+
   ylab("Predicted Diagnosis")+
-  xlab("Actual Diagnosis")
+  xlab("Actual Diagnosis") +
+  ylim(-5,5)
 
 
 # bestglm
