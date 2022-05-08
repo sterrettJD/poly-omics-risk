@@ -286,18 +286,18 @@ str(mergey[,(ncol(mergey)-30):ncol(mergey)])
 traindf <- as.data.frame(mergey[complete.cases(mergey),])
 dim(traindf)
 dim(mergey)
-varlist <- cn[which(cn %ni% c("diagnosis", "Participant_ID"))]
+varlist <- cn[which(cn %ni% c("diagnosis", "Participant_ID", "site_name"))]
 # varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
 varstring <- paste0(varlist, collapse = " + ", sep = "")
 
 ## LASSO Lambda Search ######################################################
 # stop()
-numvariables <- c()
-lambdavec <- seq(from = 70, to = 110, by = 5)
+# numvariables <- c()
+# lambdavec <- seq(from = 87, to = 107, by = .5)
 # for(lambdy in lambdavec){
 #   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
 #                    data = traindf,
-#                    rnd = list(Participant_ID=~1),
+#                    rnd = list(Participant_ID=~1, site_name=~1),
 #                    lambda=lambdy,
 #                    family = binomial(link = "logit"))
 #   summary(lm1)
@@ -310,7 +310,7 @@ lambdavec <- seq(from = 70, to = 110, by = 5)
 
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
                  data = traindf, 
-                 rnd = list(Participant_ID=~1),
+                 rnd = list(Participant_ID=~1, site_name=~1),
                  lambda=100,
                  family = binomial(link = "logit"))
 summary(lm1)
@@ -325,11 +325,11 @@ df_bestglm <- as.data.frame(traindf[,c(lassoFeatures)])
 df_bestglm$diagnosis <- as.factor(as.character(df_bestglm$diagnosis))
 summary(df_bestglm$diagnosis)
 
-varlist2 <- names(df_bestglm)[which(names(df_bestglm) %ni% c("diagnosis", "Participant_ID"))]
+varlist2 <- names(df_bestglm)[which(names(df_bestglm) %ni% c("diagnosis", "Participant_ID", "site_name"))]
 # varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
 varstring2 <- paste0(varlist2, collapse = " + ", sep = "")
 
-mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Participant_ID)")), 
+mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Participant_ID) + (1|site_name)")), 
              data = df_bestglm, 
              family = binomial)
 mymodsum <- summary(mymod)
@@ -518,6 +518,33 @@ avg_par_scores <- as.data.frame(avg_par_scores)
 rownames(avg_par_scores) <- avg_par_scores$Participant_ID
 avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
+#make plot to see variation within each individual
+library(ggridges)
+sort_m_pred_df <- m_pred_df[order(m_pred_df$actual),]
+myorder <- unique(sort_m_pred_df$Participant_ID)
+sort_m_pred_df <- sort_m_pred_df %>% 
+  mutate(Participant_ID = factor(Participant_ID, levels = rev(myorder)))
+precolor <- sort_m_pred_df %>% 
+  group_by(Participant_ID) %>%
+  summarize(actual = first(diagnosis), 
+            consent_age = first(consent_age),
+            sex = first(sex),
+            race = first(race),
+            Antibiotics = first(Antibiotics)
+  )
+yaxiscoloring <- ifelse(precolor$actual == 1, "red", "blue")
+ggplot(sort_m_pred_df, aes(x = predicted, y = Participant_ID, fill = stat(x))) +
+  geom_density_ridges_gradient(scale = 2, rel_min_height = 0.05,
+                               jittered_points = TRUE,
+                               position = position_points_jitter(width = 0.05, height = 0),
+                               point_shape = '|', point_size = 3, point_alpha = 1, alpha = 0.5) + 
+  theme_minimal() + coord_cartesian(clip = "off") + # To avoid cut off
+  scale_fill_viridis_c(name = NULL, option = "H", alpha = 0.5) +
+  labs(title = 'Score distribution per individual') +
+  theme(axis.text.y = element_text(angle = 45, hjust = 1, colour = yaxiscoloring)) +
+  xlab("Score") + ylab("Participant cases (red) & controls (blue)") +
+  theme(legend.position="bottom", legend.key.width = unit(1.7, 'cm'))
+
 
 print("NULL COVARIATE MODEL")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
@@ -573,7 +600,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
     ),
     axis.text.y = element_text(
       color = "black",
-      size = length(unique(df2$variable))*1/3,
+      size = length(unique(df2$variable))*1/2,
       angle = 0
     ),
     axis.title.x = element_text(
@@ -589,7 +616,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
   )
 plot_varimp2
 
-ggsave("varimp.png", width=7, height=4, units="in", dpi=320)
+ggsave("varimp.png", width=9, height=4, units="in", dpi=320)
 
 
 stop()
