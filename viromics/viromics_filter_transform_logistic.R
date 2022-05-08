@@ -1,6 +1,6 @@
-# setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
+ setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
 #setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
-setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/viromics/")
+# setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/viromics/")
 
 list.files()
 
@@ -148,6 +148,19 @@ num_grouped_df_3 <- mutate_all(grouped_df_3, function(x) as.numeric(as.character
 summary(colSums(num_grouped_df_3))
 hist(colSums(num_grouped_df_3))
 
+
+# percent missing filter
+percMissing <- rowSums(num_grouped_df_3==0)/ncol(num_grouped_df_3)*100
+hist(percMissing, xlim = c(80,100),  plot = TRUE)
+length(percMissing)
+length(which(percMissing>5))
+length(which(percMissing>1))
+
+num_grouped_df_3 <- num_grouped_df_3[which(percMissing<95),]
+
+summary(colSums(num_grouped_df_3))
+hist(colSums(num_grouped_df_3))
+view(num_grouped_df_3)
 ## add epsilon to all entries to set up for center log transform --##############
 pepsi <- 1E-06
 num_grouped_df_3 <- num_grouped_df_3 + pepsi
@@ -330,10 +343,10 @@ for(i in 1:length(varlist)){
 # varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
 varstring <- paste0(varlist, collapse = " + ", sep = "")
 
-## LASSO Lambda Search ######################################################
+# ## LASSO Lambda Search ######################################################
 
 # numvariables <- c()
-# lambdavec <- seq(from = 0, to = 40, by = 1)
+# lambdavec <- seq(from = 0, to = 50, by = 1)
 # for(lambdy in lambdavec){
 #   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
 #                    data = traindf,
@@ -348,12 +361,12 @@ varstring <- paste0(varlist, collapse = " + ", sep = "")
 # }
 # plot(x = lambdavec, y = numvariables)
 
-## LASSO regression with lambda=11 -##########################################################################
+## LASSO regression with lambda=5 -##########################################################################
 
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
                  data = traindf, 
                  rnd = list(Participant_ID=~1),
-                 lambda=11,
+                 lambda= 5,
                  family = binomial(link = "logit"))
 
 summary(lm1)
@@ -552,7 +565,7 @@ avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 print("MODEL WITH ONLY FEATURES, NO COVARIATES")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlot
-
+#ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
 
 # null model
 
@@ -581,13 +594,72 @@ avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 print("NULL COVARIATE MODEL")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlot
-
+#ggsave("pred_null.png", width=2.5, height=2.5, units="in", dpi=320)
 
 pred_df
 viromics_pred_score_featuresonly <- tibble::rownames_to_column(pred_df, "External_ID")
 write.table(viromics_pred_score_featuresonly, "viromics_features_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
 
+# remove the intercept
+featureplot_df <- mod_coef_df_nocovar[2:nrow(mod_coef_df_nocovar),]
+featureplot_df$Feature <- rownames(featureplot_df)
+featureplot_df <- featureplot_df %>% dplyr::arrange(Estimate)
 
+
+featureplot_df %>% 
+  ggplot(mapping = aes(y=Feature, x=Estimate)) +
+  geom_point()
+
+# make our plotting dataframe
+df2 <- featureplot_df %>%
+  tibble::rownames_to_column() %>%
+  dplyr::rename("variable" = rowname) %>%
+  dplyr::arrange(Estimate) %>%
+  dplyr::mutate(variable = forcats::fct_inorder(variable))
+
+plot_varimp2 <- ggplot2::ggplot(df2) +
+  geom_segment(
+    aes(
+      x = variable,
+      y = 0,
+      xend = variable,
+      yend = Estimate
+    ),
+    size = 1.5,
+    alpha = 0.7
+  ) +
+  geom_point(aes(x = variable, y = Estimate, col = variable),
+             size = 4,
+             show.legend = F) +
+  coord_flip() +
+  labs(y = "Weight", x = NULL, title = "") +
+  theme_bw() +
+  theme(legend.title = element_text(size = 14)) +
+  theme(
+    axis.text.x = element_text(
+      color = "black",
+      size = 13,
+      angle = 0,
+      hjust = .5,
+      vjust = .5
+    ),
+    axis.text.y = element_text(
+      color = "black",
+      size = length(unique(df2$variable))*1,
+      angle = 0
+    ),
+    axis.title.x = element_text(
+      color = "black",
+      size = 13,
+      angle = 0
+    ),
+    axis.title.y = element_text(
+      color = "black",
+      size = 13,
+      angle = 90
+    )
+  )
+plot_varimp2
 # ## Prediction Boxplot and AUC for LASSO ######################################################
 # df_bestglm <- as.data.frame(traindf[,c(lassoFeatures)])
 # df_bestglm$diagnosis <- as.factor(as.character(df_bestglm$diagnosis))

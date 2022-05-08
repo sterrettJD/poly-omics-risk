@@ -623,10 +623,20 @@ metatranscriptomics_pred_score_featuresonly <- tibble::rownames_to_column(pred_d
 write.table(metatranscriptomics_pred_score_featuresonly, "metatranscriptomics_features_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
 
 # remove the intercept
-featureplot_df <- mod_coef_df_nocovar[2:nrow(featureplot_df),]
+featureplot_df <- mod_coef_df_nocovar[2:nrow(mod_coef_df_nocovar),]
 featureplot_df$Feature <- rownames(featureplot_df)
 featureplot_df <- featureplot_df %>% dplyr::arrange(Estimate)
 
+featureplot_df$Feature <- gsub(replacement= " ", pattern= "_", featureplot_df$Feature)
+featureplot_df$Feature <- gsub(replacement= ":", pattern= "__", featureplot_df$Feature)
+featureplot_df$Feature <- gsub(replacement= ",", pattern= "_", featureplot_df$Feature)
+featureplot_df$Feature <- gsub(replacement= ";", pattern= "_", featureplot_df$Feature)
+featureplot_df$Feature <- gsub(replacement= "&", pattern= "_and_", featureplot_df$Feature)
+featureplot_df$Feature <- gsub(replacement= "'", pattern= "prime", featureplot_df$Feature)
+featureplot_df$Feature <- gsub(replacement= "\\+", pattern= "plus", featureplot_df$Feature)
+featureplot_df$Feature <- gsub(replacement= "\\/", pattern= "_", featureplot_df$Feature)
+
+rownames(featureplot_df) <- featureplot_df$Feature
 
 featureplot_df %>% 
   ggplot(mapping = aes(y=Feature, x=Estimate)) +
@@ -682,6 +692,8 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
     )
   )
 plot_varimp2
+
+ggsave("pathway_importance.png", width=8, height=5, units="in", dpi=320)
 
 
 # ## Mixed Effects Random Forests via MixRF ######################################################
