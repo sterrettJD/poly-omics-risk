@@ -288,8 +288,6 @@ cn <- gsub(pattern = "\\/", replacement = "_", cn)
 cn[which(sapply(strsplit(cn,""),"[[",1) %in% 0:9)] <- paste0("P_", cn[which(sapply(strsplit(cn,""),"[[",1) %in% 0:9)])
 
 
-cn
-
 colnames(mergeytest) <- cn
 colnames(mergey) <- cn
 
@@ -372,8 +370,7 @@ train_df <- cbind(data.new,
 
 dim(train_df)
 
-varlist_nocolin <- c(varlist[which(varlist %in% colnames(train_df))], 
-                    "site_name", 
+varlist_nocolin <- c(varlist[which(varlist %in% colnames(train_df))],
                     "sex", 
                     "race", 
                     "Antibiotics")
@@ -385,7 +382,7 @@ lambdavec <- seq(from = 10, to = 110, by = 5)
 for(lambdy in lambdavec){
   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
                    data = train_df,
-                   rnd = list(Participant_ID=~1),
+                   rnd = list(Participant_ID=~1, site_name=~1),
                    lambda=lambdy,
                    family = binomial(link = "logit"))
   summary(lm1)
@@ -400,7 +397,7 @@ lassoFeatures
 
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
                  data = traindf, 
-                 rnd = list(Participant_ID=~1),
+                 rnd = list(Participant_ID=~1, site_name=~1),
                  lambda=25,
                  family = binomial(link = "logit"))
 summary(lm1)
@@ -419,7 +416,7 @@ varlist2 <- names(df_bestglm)[which(names(df_bestglm) %ni% c("diagnosis", "Parti
 # varstring <- paste0(varlist[sample(1:length(varlist),200)], collapse = " + ", sep = "")
 varstring2 <- paste0(varlist2, collapse = " + ", sep = "")
 
-mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Participant_ID)")), 
+mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|site_name) +  (1|Participant_ID)")), 
              data = df_bestglm, 
              family = binomial)
 mymodsum <- summary(mymod)
@@ -635,12 +632,9 @@ featureplot_df$Feature <- gsub(replacement= "&", pattern= "_and_", featureplot_d
 featureplot_df$Feature <- gsub(replacement= "'", pattern= "prime", featureplot_df$Feature)
 featureplot_df$Feature <- gsub(replacement= "\\+", pattern= "plus", featureplot_df$Feature)
 featureplot_df$Feature <- gsub(replacement= "\\/", pattern= "_", featureplot_df$Feature)
+featureplot_df$Feature <- gsub(replacement= ": ", pattern= "   ", featureplot_df$Feature)
 
 rownames(featureplot_df) <- featureplot_df$Feature
-
-featureplot_df %>% 
-  ggplot(mapping = aes(y=Feature, x=Estimate)) +
-  geom_point()
 
 # make our plotting dataframe
 df2 <- featureplot_df %>%
@@ -694,6 +688,11 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
 plot_varimp2
 
 ggsave("pathway_importance.png", width=8, height=5, units="in", dpi=320)
+
+
+
+
+
 
 
 # ## Mixed Effects Random Forests via MixRF ######################################################
