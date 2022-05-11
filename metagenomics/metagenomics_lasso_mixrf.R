@@ -380,7 +380,7 @@ pred_df$actual <- as.factor(pred_df$actual)
 
 
 # null model with only covariates
-mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ site_name + consent_age + sex + race + Antibiotics + (1|Participant_ID)"), 
+mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ consent_age + sex + race + Antibiotics + (1|Participant_ID) + (1|site_name)"), 
                                data = df_bestglm, 
                                family = binomial)
 
@@ -494,30 +494,6 @@ PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlot
 ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
 
-
-# null model
-
-null_model_predictions <- null_model_predictions %>% as.data.frame()
-colnames(null_model_predictions) <- c("actual", "predicted")
-null_model_predictions$actual <- as.factor(null_model_predictions$actual)
-
-m_pred_df <- merge(null_model_predictions,predictionDF[,c("Participant_ID","diagnosis", "site_name", "consent_age", "sex", "race", "Antibiotics")], by="row.names")
-rownames(m_pred_df) <- m_pred_df$Row.names
-
-avg_par_scores <- m_pred_df %>% 
-  group_by(Participant_ID) %>%
-  summarize(actual = first(diagnosis), 
-            predicted = mean(predicted),
-            site_name = first(site_name),
-            consent_age = first(consent_age),
-            sex = first(sex),
-            race = first(race),
-            Antibiotics = first(Antibiotics)
-  )
-avg_par_scores <- as.data.frame(avg_par_scores)
-rownames(avg_par_scores) <- avg_par_scores$Participant_ID
-avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
-
 #make plot to see variation within each individual
 library(ggridges)
 sort_m_pred_df <- m_pred_df[order(m_pred_df$actual),]
@@ -543,7 +519,32 @@ ggplot(sort_m_pred_df, aes(x = predicted, y = Participant_ID, fill = stat(x))) +
   labs(title = 'Score distribution per individual') +
   theme(axis.text.y = element_text(angle = 45, hjust = 1, colour = yaxiscoloring)) +
   xlab("Score") + ylab("Participant cases (red) & controls (blue)") +
-  theme(legend.position="bottom", legend.key.width = unit(1.7, 'cm'))
+  theme(legend.position="bottom", legend.key.width = unit(1.7, 'cm'), legend.text = element_blank())
+ggsave("scores_per_individual.png", width=4.31, height=5.7, units="in", dpi=320, bg='#ffffff')
+
+
+# null model
+
+null_model_predictions <- null_model_predictions %>% as.data.frame()
+colnames(null_model_predictions) <- c("actual", "predicted")
+null_model_predictions$actual <- as.factor(null_model_predictions$actual)
+
+m_pred_df <- merge(null_model_predictions,predictionDF[,c("Participant_ID","diagnosis", "site_name", "consent_age", "sex", "race", "Antibiotics")], by="row.names")
+rownames(m_pred_df) <- m_pred_df$Row.names
+
+avg_par_scores <- m_pred_df %>% 
+  group_by(Participant_ID) %>%
+  summarize(actual = first(diagnosis), 
+            predicted = mean(predicted),
+            site_name = first(site_name),
+            consent_age = first(consent_age),
+            sex = first(sex),
+            race = first(race),
+            Antibiotics = first(Antibiotics)
+  )
+avg_par_scores <- as.data.frame(avg_par_scores)
+rownames(avg_par_scores) <- avg_par_scores$Participant_ID
+avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 
 print("NULL COVARIATE MODEL")
