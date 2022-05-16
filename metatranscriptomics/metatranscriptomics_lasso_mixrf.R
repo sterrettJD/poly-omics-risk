@@ -581,6 +581,7 @@ print("MODEL WITH ONLY FEATURES, basic COVARIATES")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex + race", covars_only=F)
 PredPlot
 ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
+<<<<<<< HEAD
 # stop()
 
 #make plot to see variation within each individual
@@ -611,6 +612,13 @@ ggplot(sort_m_pred_df, aes(x = predicted, y = Participant_ID, fill = stat(x))) +
   theme(legend.position="bottom", legend.key.width = unit(1.7, 'cm'), legend.text = element_blank())
 ggsave("scores_per_individual.png", width=4.31, height=5.7, units="in", dpi=320, bg='#ffffff')
 # stop()
+=======
+
+#diagnosis ~ score + age + sex
+print("MODEL WITH ONLY FEATURES AND COVARIATES")
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "age + sex + race", covars_only=F)
+PredPlot
+>>>>>>> c9cbe90b1d4b0c547fc5872e18603b4b3dbd3d7d
 
 # null model
 
@@ -683,7 +691,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
     alpha = 0.7
   ) +
   geom_point(aes(x = variable, y = Estimate, col = variable),
-             size = 4,
+             size = 2,
              show.legend = F) +
   coord_flip() +
   labs(y = "Weight", x = NULL, title = "") +
@@ -692,19 +700,19 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
   theme(
     axis.text.x = element_text(
       color = "black",
-      size = 13,
+      size = 8,
       angle = 0,
       hjust = .5,
       vjust = .5
     ),
     axis.text.y = element_text(
       color = "black",
-      size = length(unique(df2$variable))*1/3,
+      size = length(unique(df2$variable))*1/5,
       angle = 0
     ),
     axis.title.x = element_text(
       color = "black",
-      size = 13,
+      size = 8,
       angle = 0
     ),
     axis.title.y = element_text(
@@ -715,7 +723,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
   )
 plot_varimp2
 
-ggsave("pathway_importance.png", width=8, height=5, units="in", dpi=320)
+ggsave("pathway_importance.png", width=4, height=4, units="in", dpi=320)
 
 
 
