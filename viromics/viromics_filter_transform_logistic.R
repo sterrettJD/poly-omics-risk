@@ -1,6 +1,6 @@
- setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
+ # setwd("C:\\Users\\rgarr\\Documents\\poly-omics-risk")
 #setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
-# setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/viromics/")
+setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/viromics/")
 
 list.files()
 
@@ -160,7 +160,7 @@ num_grouped_df_3 <- num_grouped_df_3[which(percMissing<95),]
 
 summary(colSums(num_grouped_df_3))
 hist(colSums(num_grouped_df_3))
-view(num_grouped_df_3)
+# view(num_grouped_df_3)
 ## add epsilon to all entries to set up for center log transform --##############
 pepsi <- 1E-06
 num_grouped_df_3 <- num_grouped_df_3 + pepsi
@@ -201,7 +201,7 @@ transp_clr_num_grouped_df_3$`External ID` <- rownames(transp_clr_num_grouped_df_
 
 ## read in and Merge with metadata --###################################
 #read in training set and merge with viromics data
-train_meta= fread("training_metadata.txt", sep='\t', header=FALSE)
+train_meta= fread("../training_metadata.txt", sep='\t', header=FALSE)
 train_meta=as.data.frame(train_meta)
 colnames(train_meta)= c("External ID", "Participant ID","race","data_type", "consent_age", "site_name", "diagnosis", "sex", "Antibiotics")
 train_meta=train_meta %>% filter(data_type == 'viromics')
@@ -218,11 +218,11 @@ train_meta$site_name <- as.factor(train_meta$site_name)
 train_meta$consent_age <- as.numeric(train_meta$consent_age)
 train_meta$race <- as.factor(train_meta$race)
 
-view(train_meta)
+# view(train_meta)
 
 
 #read in testing metadata and merge with viromics
-test_meta= fread("testing_metadata.txt", sep='\t', header=FALSE)
+test_meta= fread("../testing_metadata.txt", sep='\t', header=FALSE)
 test_meta=as.data.frame(test_meta)
 colnames(test_meta)= c("External ID", "Participant ID","race","data_type", "consent_age", "site_name", "diagnosis", "sex", "Antibiotics")
 test_meta=test_meta %>% filter(data_type == 'viromics')
@@ -316,8 +316,8 @@ mergey$race <- as.factor(mergey$race)
 mergey$Antibiotics <- as.factor(mergey$Antibiotics)
 
 
-str(mergey[,1:30])
-str(mergey[,(ncol(mergey)-30):ncol(mergey)])
+# str(mergey[,1:30])
+# str(mergey[,(ncol(mergey)-30):ncol(mergey)])
 
 traindf <- as.data.frame(mergey[complete.cases(mergey),])
 
@@ -466,7 +466,7 @@ colnames(null_model_predictions) <- c("actual", "predicted")
 
 # make a violin plot of the prediction
 boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
-  
+  mycovarstring <- covars
   auc_df$actual <- as.factor(auc_df$actual)
   auc_df$predicted <- as.numeric(auc_df$predicted)
   PredPlot <- ggplot(data = auc_df, aes(x = actual, y = predicted))+
@@ -562,10 +562,39 @@ avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 
 # diagnosis ~ score
-print("MODEL WITH ONLY FEATURES, NO COVARIATES")
-PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+print("MODEL WITH ONLY FEATURES, basic COVARIATES")
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex + race", covars_only=F)
 PredPlot
-#ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
+ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
+
+#make plot to see variation within each individual
+library(ggridges)
+sort_m_pred_df <- m_pred_df[order(m_pred_df$actual),]
+myorder <- unique(sort_m_pred_df$Participant_ID)
+sort_m_pred_df <- sort_m_pred_df %>% 
+  mutate(Participant_ID = factor(Participant_ID, levels = rev(myorder)))
+precolor <- sort_m_pred_df %>% 
+  group_by(Participant_ID) %>%
+  summarize(actual = first(diagnosis), 
+            consent_age = first(consent_age),
+            sex = first(sex),
+            race = first(race),
+            Antibiotics = first(Antibiotics)
+  )
+yaxiscoloring <- ifelse(precolor$actual == 1, "red", "blue")
+ggplot(sort_m_pred_df, aes(x = predicted, y = Participant_ID, fill = stat(x))) +
+  geom_density_ridges_gradient(scale = 2, rel_min_height = 0.05,
+                               jittered_points = TRUE,
+                               position = position_points_jitter(width = 0.05, height = 0),
+                               point_shape = '|', point_size = 3, point_alpha = 1, alpha = 0.5) + 
+  theme_minimal() + coord_cartesian(clip = "off") + # To avoid cut off
+  scale_fill_viridis_c(name = NULL, option = "H", alpha = 0.5) +
+  labs(title = 'Score distribution per individual') +
+  theme(axis.text.y = element_text(angle = 30, hjust = 1, colour = yaxiscoloring)) +
+  xlab("Score") + ylab("Participant cases (red) & controls (blue)") +
+  theme(legend.position="bottom", legend.key.width = unit(1.7, 'cm'), legend.text = element_blank())
+ggsave("scores_per_individual.png", width=4.31, height=5.7, units="in", dpi=320, bg='#ffffff')
+stop()
 
 # null model
 

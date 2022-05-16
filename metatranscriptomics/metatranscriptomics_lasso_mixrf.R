@@ -1,5 +1,5 @@
- 
-setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
+setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/metatranscriptomics")
+# setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
 
 list.files()
 
@@ -481,7 +481,7 @@ colnames(null_model_predictions) <- c("actual", "predicted")
 
 # make a violin plot of the prediction
 boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
-  
+  mycovarstring <- covars
   auc_df$actual <- as.factor(auc_df$actual)
   auc_df$predicted <- as.numeric(auc_df$predicted)
   PredPlot <- ggplot(data = auc_df, aes(x = actual, y = predicted))+
@@ -577,12 +577,40 @@ avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 
 # diagnosis ~ score
-print("MODEL WITH ONLY FEATURES, NO COVARIATES")
-PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+print("MODEL WITH ONLY FEATURES, basic COVARIATES")
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex + race", covars_only=F)
 PredPlot
-
 ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
+# stop()
 
+#make plot to see variation within each individual
+library(ggridges)
+sort_m_pred_df <- m_pred_df[order(m_pred_df$actual),]
+myorder <- unique(sort_m_pred_df$Participant_ID)
+sort_m_pred_df <- sort_m_pred_df %>% 
+  mutate(Participant_ID = factor(Participant_ID, levels = rev(myorder)))
+precolor <- sort_m_pred_df %>% 
+  group_by(Participant_ID) %>%
+  summarize(actual = first(diagnosis), 
+            consent_age = first(consent_age),
+            sex = first(sex),
+            race = first(race),
+            Antibiotics = first(Antibiotics)
+  )
+yaxiscoloring <- ifelse(precolor$actual == 1, "red", "blue")
+ggplot(sort_m_pred_df, aes(x = predicted, y = Participant_ID, fill = stat(x))) +
+  geom_density_ridges_gradient(scale = 2, rel_min_height = 0.05,
+                               jittered_points = TRUE,
+                               position = position_points_jitter(width = 0.05, height = 0),
+                               point_shape = '|', point_size = 3, point_alpha = 1, alpha = 0.5) + 
+  theme_minimal() + coord_cartesian(clip = "off") + # To avoid cut off
+  scale_fill_viridis_c(name = NULL, option = "H", alpha = 0.5) +
+  labs(title = 'Score distribution per individual') +
+  theme(axis.text.y = element_text(angle = 30, hjust = 1, colour = yaxiscoloring)) +
+  xlab("Score") + ylab("Participant cases (red) & controls (blue)") +
+  theme(legend.position="bottom", legend.key.width = unit(1.7, 'cm'), legend.text = element_blank())
+ggsave("scores_per_individual.png", width=4.31, height=5.7, units="in", dpi=320, bg='#ffffff')
+# stop()
 
 # null model
 

@@ -1,6 +1,6 @@
 
-# setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
-setwd("/home/romulo/Polyomic_project/poly-omics-risk/metabolomics")
+setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/metabolomics")
+# setwd("/home/romulo/Polyomic_project/poly-omics-risk/metabolomics")
 list.files()
 
 # install.packages("data.table")
@@ -50,8 +50,8 @@ library(randomForest)
 `%ni%` <- Negate(`%in%`)
 
 ## metadata --###################################
-# metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
-metadata <- fread("hmp2_metadata.csv", header=T, stringsAsFactors=T)
+metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+# metadata <- fread("hmp2_metadata.csv", header=T, stringsAsFactors=T)
 
 str(metadata)
 # metadata <- subset(metadata, data_type == "metagenomics")
@@ -107,8 +107,8 @@ metadata1$diagnosis[metadata1$diagnosis == "nonIBD"] <- 0
 metadata1$diagnosis <- as.numeric(metadata1$diagnosis)
 
 ## training metadata --###################################
-#training_metadata <- fread("https://raw.githubusercontent.com/sterrettJD/poly-omics-risk/main/training_metadata.txt?token=GHSAT0AAAAAABQ2LF4FWL6XDQDJLZ4C4F5SYS5WH4Q", sep = "\t")
-training_metadata <- fread("~/Polyomic_project/poly-omics-risk/training_metadata.txt", sep = "\t")
+# training_metadata <- fread("https://raw.githubusercontent.com/sterrettJD/poly-omics-risk/main/training_metadata.txt?token=GHSAT0AAAAAABQ2LF4FWL6XDQDJLZ4C4F5SYS5WH4Q", sep = "\t")
+training_metadata <- fread("../training_metadata.txt", sep = "\t")
 training_metadata <- subset(training_metadata, data_type == "metabolomics")
 training_metadata[training_metadata==""] <- NA
 isna <- sapply(training_metadata, function(x) sum(is.na(x)))
@@ -126,7 +126,7 @@ training_metadata$race <- as.factor(training_metadata$race)
 
 ## testing metadata --##############
 # testing_metadata <- fread("https://raw.githubusercontent.com/sterrettJD/poly-omics-risk/main/testing_metadata.txt?token=GHSAT0AAAAAABQ2LF4EWNW2TVN2PVOHJO6MYS5WHLQ", sep = "\t")
-testing_metadata <- fread("~/Polyomic_project/poly-omics-risk/testing_metadata.txt", sep = "\t")
+testing_metadata <- fread("../testing_metadata.txt", sep = "\t")
 testing_metadata <- subset(testing_metadata, data_type == "metabolomics")
 testing_metadata[testing_metadata==""] <- NA
 isna <- sapply(testing_metadata, function(x) sum(is.na(x)))
@@ -155,8 +155,8 @@ summary(training_metadata$race)
 
 ## Metabolomics HMP2_metabolomics --###################################
 # fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/WGS/1818/taxonomic_profiles_3.tsv.gz", header=T)
-# fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metabolites/1723/HMP2_metabolomics.csv.gz", header=T)
-fname <- fread("HMP2_metabolomics.csv.gz", header=T)
+fname <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metabolites/1723/HMP2_metabolomics.csv.gz", header=T)
+# fname <- fread("HMP2_metabolomics.csv.gz", header=T)
 fname <- as.data.frame(fname)
 # data_glimpse(fname = fname, UNINTEGRATED = F, thresh = 0.8, normalize = T, myTitle = "Metatranscriptomes pathabundances_3")
 df_3 <- fname
@@ -477,7 +477,7 @@ colnames(null_model_predictions) <- c("actual", "predicted")
 
 # make a violin plot of the prediction
 boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
-  
+  mycovarstring <- covars
   auc_df$actual <- as.factor(auc_df$actual)
   auc_df$predicted <- as.numeric(auc_df$predicted)
   PredPlot <- ggplot(data = auc_df, aes(x = actual, y = predicted))+
@@ -576,12 +576,39 @@ avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 
 # diagnosis ~ score
-print("MODEL WITH ONLY FEATURES, NO COVARIATES")
-PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+print("MODEL WITH ONLY FEATURES, basic COVARIATES")
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex + race", covars_only=F)
 PredPlot
-
 ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
 
+#make plot to see variation within each individual
+library(ggridges)
+sort_m_pred_df <- m_pred_df[order(m_pred_df$actual),]
+myorder <- unique(sort_m_pred_df$Participant_ID)
+sort_m_pred_df <- sort_m_pred_df %>% 
+  mutate(Participant_ID = factor(Participant_ID, levels = rev(myorder)))
+precolor <- sort_m_pred_df %>% 
+  group_by(Participant_ID) %>%
+  summarize(actual = first(diagnosis), 
+            consent_age = first(consent_age),
+            sex = first(sex),
+            race = first(race),
+            Antibiotics = first(Antibiotics)
+  )
+yaxiscoloring <- ifelse(precolor$actual == 1, "red", "blue")
+ggplot(sort_m_pred_df, aes(x = predicted, y = Participant_ID, fill = stat(x))) +
+  geom_density_ridges_gradient(scale = 2, rel_min_height = 0.05,
+                               jittered_points = TRUE,
+                               position = position_points_jitter(width = 0.05, height = 0),
+                               point_shape = '|', point_size = 3, point_alpha = 1, alpha = 0.5) + 
+  theme_minimal() + coord_cartesian(clip = "off") + # To avoid cut off
+  scale_fill_viridis_c(name = NULL, option = "H", alpha = 0.5) +
+  labs(title = 'Score distribution per individual') +
+  theme(axis.text.y = element_text(angle = 30, hjust = 1, colour = yaxiscoloring)) +
+  xlab("Score") + ylab("Participant cases (red) & controls (blue)") +
+  theme(legend.position="bottom", legend.key.width = unit(1.7, 'cm'), legend.text = element_blank())
+ggsave("scores_per_individual.png", width=4.31, height=5.7, units="in", dpi=320, bg='#ffffff')
+stop()
 
 # null model
 
@@ -677,7 +704,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
     alpha = 0.7
   ) +
   geom_point(aes(x = variable, y = Estimate, col = variable),
-             size = 4,
+             size = 2,
              show.legend = F) +
   coord_flip() +
   labs(y = "Weight", x = NULL, title = "") +
@@ -686,7 +713,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
   theme(
     axis.text.x = element_text(
       color = "black",
-      size = 13,
+      size = 10,
       angle = 0,
       hjust = .5,
       vjust = .5
@@ -698,18 +725,20 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
     ),
     axis.title.x = element_text(
       color = "black",
-      size = 13,
+      size = 10,
       angle = 0
     ),
     axis.title.y = element_text(
       color = "black",
-      size = 13,
+      size = 10,
       angle = 90
     )
   )
 plot_varimp2
 
-ggsave("varimp.png", width=9, height=4, units="in", dpi=320)
+ggsave("varimp.png", width=4, height=4, units="in", dpi=320)
+
+stop()
 
 # ## Mixed Effects Random Forests via MixRF ######################################################
 

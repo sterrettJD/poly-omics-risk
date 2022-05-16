@@ -1,6 +1,6 @@
-base_dir = "C:\\Users\\rgarr\\Documents\\poly-omics-risk\\"
+# base_dir = "C:\\Users\\rgarr\\Documents\\poly-omics-risk\\"
 # setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
-# base_dir = "/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk"
+base_dir = "/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk"
 
 # list.files("./viromics/")
 
@@ -137,7 +137,9 @@ df_for_model
 rownames(df_for_model) <- df_for_model$`Participant_ID`
 df_for_model$`Participant_ID` <- NULL
 
-view(df_for_model)
+# view(df_for_model)
+colnames(df_for_model) <- c("diagnosis","consent_age","race","sex","site_name","VIR","MTG","MTX","MTB")
+
 
 ## combined regression --#####
 
@@ -148,19 +150,19 @@ combomod_sum <- summary(combomod)
 combomod_sum
 
 
-combomod_nocovar <- glm(as.formula(paste0("diagnosis ~ virome_pred + metagen_pred + metatrans_pred + metabol_pred")), data = df_for_model, family = "binomial")
+combomod_nocovar <- glm(as.formula(paste0("diagnosis ~ VIR + MTG + MTX + MTB")), data = df_for_model, family = "binomial")
 
 combomod_nocovar_sum <- summary(combomod_nocovar)
 combomod_nocovar_sum
 
-combomod_somecovar <- glm(as.formula(paste0("diagnosis ~ virome_pred + metagen_pred + metatrans_pred + metabol_pred + consent_age + sex")), data = df_for_model, family = "binomial")
+combomod_somecovar <- glm(as.formula(paste0("diagnosis ~ VIR + MTG + MTX + MTB + consent_age + sex")), data = df_for_model, family = "binomial")
 
 combomod_somecovar_sum <- summary(combomod_somecovar)
 combomod_somecovar_sum
-plot_model(combomod_somecovar, vline.color = 'gray')
-
+plot_model(combomod_somecovar, vline.color = 'gray') + theme_bw()
 
 combomod_only_somecovar <- glm(as.formula(paste0("diagnosis ~ consent_age + sex")), data = df_for_model, family = "binomial")
+# nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE)
 
 combomod_only_somecovar <- summary(combomod_only_somecovar)
 combomod_only_somecovar
@@ -172,16 +174,28 @@ NagelkerkeR2(combomod)
 NagelkerkeR2(combomod_somecovar)
 NagelkerkeR2(combomod_only_somecovar)
 
+library(rcompanion)
+nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE)
+nagelkerke(combomod_somecovar, null = NULL, restrictNobs = FALSE)
+
+library(corrplot)
+mtcor <- as.matrix(df_for_model[,c("VIR","MTG","MTX","MTB")])
+M = cor(mtcor)
+testRes = cor.mtest(mtcor, conf.level = 0.95)
+
+corrplot.mixed(M)
+corrplot(M, addCoef.col = 'black', tl.pos = 'd',
+         cl.pos = 'n', col = COL2('PiYG'), type = "lower")
 
 # #---make a regression tree---#########################################################################################################################################################################
 # require(tree)
-mytree <- tree(diagnosis ~ virome_pred + metagen_pred + metatrans_pred + metabol_pred, data = df_for_model, control = tree.control(mindev =0, minsize=3, nobs=29) )
+mytree <- tree(diagnosis ~ VIR + MTG + MTX + MTB, data = df_for_model, control = tree.control(mindev =0, minsize=3, nobs=29) )
 plot(mytree)
 text(mytree, pretty = 1, cex = .8,  digits = 1)
 
 
 tab_model(combomod_nocovar)
-plot_model(combomod_nocovar, vline.color = 'gray')
+plot_model(combomod_nocovar, vline.color = 'gray') + theme_bw()
 
 
 ## looking at variance for participant -################

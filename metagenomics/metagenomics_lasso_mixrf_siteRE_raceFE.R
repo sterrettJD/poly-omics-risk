@@ -404,7 +404,7 @@ colnames(null_model_predictions) <- c("actual", "predicted")
 
 # make a violin plot of the prediction
 boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
-  
+  mycovarstring <- covars
   auc_df$actual <- as.factor(auc_df$actual)
   auc_df$predicted <- as.numeric(auc_df$predicted)
   PredPlot <- ggplot(data = auc_df, aes(x = actual, y = predicted))+
@@ -501,10 +501,11 @@ rownames(avg_par_scores) <- avg_par_scores$Participant_ID
 avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 # diagnosis ~ score
-print("MODEL WITH ONLY FEATURES, NO COVARIATES")
-PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+print("MODEL WITH ONLY FEATURES, basic COVARIATES")
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex + race", covars_only=F)
 PredPlot
 ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
+# stop()
 
 #make plot to see variation within each individual
 library(ggridges)
@@ -590,7 +591,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
     alpha = 0.7
   ) +
   geom_point(aes(x = variable, y = Estimate, col = variable),
-             size = 4,
+             size = 2,
              show.legend = F) +
   coord_flip() +
   labs(y = "Weight", x = NULL, title = "") +
@@ -599,7 +600,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
   theme(
     axis.text.x = element_text(
       color = "black",
-      size = 13,
+      size = 10,
       angle = 0,
       hjust = .5,
       vjust = .5
@@ -611,7 +612,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
     ),
     axis.title.x = element_text(
       color = "black",
-      size = 13,
+      size = 10,
       angle = 0
     ),
     axis.title.y = element_text(
@@ -622,7 +623,7 @@ plot_varimp2 <- ggplot2::ggplot(df2) +
   )
 plot_varimp2
 
-ggsave("varimp.png", width=9, height=4, units="in", dpi=320)
+ggsave("varimp.png", width=4, height=4, units="in", dpi=320)
 
 summary(mymod)
 summary(mymod_ONLYcovar)
