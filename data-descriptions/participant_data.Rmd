@@ -1,0 +1,27 @@
+---
+title: "Participant info"
+author: "John Sterrett"
+date: '2022-06-22'
+output: html_document
+---
+
+```{r setup, include=FALSE, }
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores")
+pacman::p_load(tidyverse, knitr, data.table)
+```
+
+# Load metadata
+
+```{r}
+testing <- fread("testing_metadata.txt") %>% as.data.frame()
+training <- fread("training_metadata.txt") %>% as.data.frame()
+
+testing$Test <- TRUE
+training$Test <- FALSE
+
+
+df <- rbind(testing, training)
+```
+
+
