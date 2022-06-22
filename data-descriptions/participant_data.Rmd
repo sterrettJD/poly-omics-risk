@@ -8,14 +8,16 @@ output: html_document
 ```{r setup, include=FALSE, }
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = "/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores")
-pacman::p_load(tidyverse, knitr, data.table)
+pacman::p_load(tidyverse, knitr, data.table, janitor, table1, tableHTML, kableExtra)
 ```
 
 # Load metadata
 
 ```{r}
-testing <- fread("testing_metadata.txt") %>% as.data.frame()
-training <- fread("training_metadata.txt") %>% as.data.frame()
+testing <- fread("testing_metadata.txt", stringsAsFactors = T) %>% 
+    as.data.frame()
+training <- fread("training_metadata.txt", stringsAsFactors = T) %>% 
+    as.data.frame()
 
 testing$Test <- TRUE
 training$Test <- FALSE
@@ -24,4 +26,40 @@ training$Test <- FALSE
 df <- rbind(testing, training)
 ```
 
+# Calc statistics
 
+```{r}
+par_df <- df %>% 
+  group_by(`Participant ID`) %>%
+  summarize(Diagnosis = first(diagnosis), 
+             Site = first(site_name),
+             Age = first(consent_age),
+             Sex = first(sex),
+             Race = first(race),
+             Antibiotics = first(Antibiotics)
+  )
+par_df <- as.data.frame(par_df)
+
+levels(par_df$Diagnosis)[match("nonIBD",levels(par_df$Diagnosis))] <- "Healthy Control"
+levels(par_df$Diagnosis)[match("CD",levels(par_df$Diagnosis))] <- "Crohn's Disease"
+levels(par_df$Diagnosis)[match("UC",levels(par_df$Diagnosis))] <- "Ulcerative Colitis"
+
+
+par_df$Diagnosis <- par_df$Diagnosis %>% as.factor()
+
+my.render.cont <- function(x) {
+    with(stats.apply.rounding(stats.default(x), digits=2), c("",
+        "Mean (SD)"=sprintf("%s (&plusmn; %s)", MEAN, SD)))
+}
+
+tbl_1 <- table1(~ Sex + Age + Antibiotics + Site + Race | Diagnosis, 
+                data=par_df, 
+                overall="Total",
+                render.continuous=my.render.cont,
+                render.missing=NULL)
+
+tbl_1 %>% knit_print()
+
+save_kable(x=tbl_1, file = "table1.pdf")
+
+```
