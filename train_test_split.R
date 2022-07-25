@@ -3,17 +3,6 @@
 setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores")
 list.files()
 
-# install.packages("data.table")
-# install.packages("ggplot2")
-# install.packages("R.utils")
-# install.packages("tidyverse")
-# install.packages("UpSetR")
-# install.packages("cowplot")
-# if (!require("BiocManager", quietly = TRUE))
-#   install.packages("BiocManager")
-# BiocManager::install("biomformat")
-# install.packages("bestglm)
-# install.packages("tree")
 library(data.table)
 library(ggplot2)
 library(R.utils)
@@ -30,7 +19,6 @@ library(tree)
 ## metadata --###################################
 metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
 str(metadata)
-# metadata <- subset(metadata, data_type == "metagenomics")
 
 
 
@@ -87,7 +75,6 @@ samples_with_all_omics %>%
     arrange(desc(n), by_group=ibd)
 
 samples_with_all_omics[sample(1:nrow(samples_with_all_omics), 30),] %>% count(ibd,`Participant ID`)
-
 
 
 dims <- c()
