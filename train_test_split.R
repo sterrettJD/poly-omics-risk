@@ -213,10 +213,19 @@ for(i in 1:50){
 }
 
 plotdf <- data.frame(1:50,plotvecquad,plotvecnonquad)
-colnames(plotdf) <- c("index", "quad", "nonquad")
-ggplot(data = plotdf, aes(x = index)) + 
-    geom_point(aes(y = quad), color = "red") + 
-    geom_point(aes(y = nonquad), color = "blue")
+colnames(plotdf) <- c("index", "4-omic samples", "Missing -omic samples")
+
+plotdf <- plotdf %>% pivot_longer(cols = c("4-omic samples", "Missing -omic samples"))
+
+colors <- c("4-omic samples" = "red", "Missing -omic samples" = "blue")
+
+
+ggplot(data = plotdf, aes(x = index, y = value, colour = name)) + 
+    geom_point() +
+    labs(x = "Number of participants selected",
+         y = "Samples retained",
+         color = "Sample type") +
+    scale_color_manual(values = colors)
 
 
 
