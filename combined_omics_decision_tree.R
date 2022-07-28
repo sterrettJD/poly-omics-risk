@@ -49,6 +49,7 @@ library(fmsb)
 library(sjPlot)
 library(sjmisc)
 library(sjlabelled)
+library(rcompanion)
 `%ni%` <- Negate(`%in%`)
 
 
@@ -155,24 +156,25 @@ combomod_nocovar <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + MBL")),
 combomod_nocovar_sum <- summary(combomod_nocovar)
 combomod_nocovar_sum
 
-combomod_somecovar <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
+combomod_somecovar <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + MBL + consent_age + sex + race")), data = df_for_model, family = "binomial")
 
 combomod_somecovar_sum <- summary(combomod_somecovar)
 combomod_somecovar_sum
 plot_model(combomod_somecovar, vline.color = 'gray') + theme_bw()
+ggsave("combined_model_forest_OR.png", width=4, height=3, units="in", dpi=320)
 
 # leave one out
-loomod <- glm(as.formula(paste0("diagnosis ~ MGN + MTS + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
+loomod <- glm(as.formula(paste0("diagnosis ~ MGN + MTS + MBL + consent_age + sex + race")), data = df_for_model, family = "binomial")
 plot_model(loomod, vline.color = 'gray') + theme_bw()
-loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MTS + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
+loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MTS + MBL + consent_age + sex + race")), data = df_for_model, family = "binomial")
 plot_model(loomod, vline.color = 'gray') + theme_bw()
-loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
+loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MBL + consent_age + sex + race")), data = df_for_model, family = "binomial")
 plot_model(loomod, vline.color = 'gray') + theme_bw()
-loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + consent_age + sex")), data = df_for_model, family = "binomial")
+loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + consent_age + sex + race")), data = df_for_model, family = "binomial")
 plot_model(loomod, vline.color = 'gray') + theme_bw()
 
-combomod_only_somecovar <- glm(as.formula(paste0("diagnosis ~ consent_age + sex")), data = df_for_model, family = "binomial")
-# Nagelkerke (Cragg and Uhler)        0.1108910 (using only age and sex)
+combomod_only_somecovar <- glm(as.formula(paste0("diagnosis ~ consent_age + sex + race")), data = df_for_model, family = "binomial")
+# Nagelkerke (Cragg and Uhler)        0.285719 (using only age sex and race)
 nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE)
 
 combomod_only_somecovar <- summary(combomod_only_somecovar)
@@ -187,7 +189,7 @@ NagelkerkeR2(combomod_only_somecovar)
 
 library(rcompanion)
 nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE)
-# Nagelkerke (Cragg and Uhler)         0.403341 (using scores + age & sex)
+# Nagelkerke (Cragg and Uhler)         0.502669 (using scores + age + sex + race)
 nagelkerke(combomod_somecovar, null = NULL, restrictNobs = FALSE)
 
 library(corrplot)
@@ -198,6 +200,7 @@ testRes = cor.mtest(mtcor, conf.level = 0.95)
 corrplot.mixed(M)
 corrplot(M, addCoef.col = 'black', tl.pos = 'd',
          cl.pos = 'n', col = COL2('PiYG'), type = "lower")
+ggsave("correlation_of_scores.png", width=3, height=3, units="in", dpi=320)
 ########## make auc plot
 
 auc_df = df_for_model
@@ -222,7 +225,7 @@ PredPlot <- ggplot(data = auc_df, aes(x = diagnosis, y = predicted))+
 
 
 # caseControlGLM <- glm(as.formula(auc_df$diagnosis ~ auc_df$predicted), data = auc_df, family = "binomial", na.action = na.omit)
-caseControlGLM <- glm(as.formula(auc_df$diagnosis ~ auc_df$predicted + auc_df$consent_age + auc_df$sex), data = auc_df, family = "binomial", na.action = na.omit)
+caseControlGLM <- glm(as.formula(auc_df$diagnosis ~ auc_df$predicted + auc_df$consent_age + auc_df$sex + auc_df$race), data = auc_df, family = "binomial", na.action = na.omit)
 
 
 predpr <- predict(caseControlGLM, auc_df, allow.new.levels = T, type = c("response"))

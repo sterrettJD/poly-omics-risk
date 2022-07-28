@@ -1,6 +1,6 @@
-#setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
+setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
 
-setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores")
+# setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores")
 list.files()
 
 library(data.table)
@@ -213,19 +213,19 @@ for(i in 1:50){
 }
 
 plotdf <- data.frame(1:50,plotvecquad,plotvecnonquad)
-colnames(plotdf) <- c("index", "4-omic samples", "Missing -omic samples")
+colnames(plotdf) <- c("index", "4-omic samples", "3-or-less-omic samples")
 
-plotdf <- plotdf %>% pivot_longer(cols = c("4-omic samples", "Missing -omic samples"))
+plotdf <- plotdf %>% pivot_longer(cols = c("4-omic samples", "3-or-less-omic samples"))
 
-colors <- c("4-omic samples" = "red", "Missing -omic samples" = "blue")
+colors <- c("4-omic samples" = "red", "3-or-less-omic samples" = "blue")
 
 
 ggplot(data = plotdf, aes(x = index, y = value, colour = name)) + 
     geom_point() +
-    labs(x = "Number of participants selected",
-         y = "Samples retained",
-         color = "Sample type") +
-    scale_color_manual(values = colors)
+    labs(x = "Number of Participants Reserved for Validation",
+         y = "Number of Samples",
+         color = "Sample Type") +
+    scale_color_manual(values = colors) + theme_bw()
 
 
 

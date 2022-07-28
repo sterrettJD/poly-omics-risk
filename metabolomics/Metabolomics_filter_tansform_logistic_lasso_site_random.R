@@ -377,34 +377,35 @@ varstring_nocolin <- paste0(varlist_nocolin, collapse = " + ", sep = "")
 # ## LASSO Lambda Search ######################################################
 
 
-numvariables <- c()
-lambdavec <- seq(from = 30, to = 48, by = .5)
-for(lambdy in lambdavec){
-  print(lambdy)
-  lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
-                   data = traindf,
-                   rnd = list(Participant_ID=~1),
-                   lambda=lambdy,
-                   family = binomial(link = "logit"))
-  summary(lm1)
-  lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
-  lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
-  lassoFeatures <- lassoFeatures[grep("as.factor",lassoFeatures,invert=T)] ####
-  lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
-  numvariables <- c(numvariables, length(lassoFeatures))
-}
-plot(x = lambdavec, y = numvariables)
+# numvariables <- c()
+# lambdavec <- seq(from = 30, to = 48, by = .5)
+# for(lambdy in lambdavec){
+#   print(lambdy)
+#   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
+#                    data = traindf,
+#                    rnd = list(Participant_ID=~1),
+#                    lambda=lambdy,
+#                    family = binomial(link = "logit"))
+#   summary(lm1)
+#   lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
+#   lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
+#   lassoFeatures <- lassoFeatures[grep("as.factor",lassoFeatures,invert=T)] ####
+#   lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
+#   numvariables <- c(numvariables, length(lassoFeatures))
+# }
+# plot(x = lambdavec, y = numvariables)
+# 
+# numvariables <- numvariables - 7; #numvariables[which(numvariables < 0)] <- 0 ####
+# 
+# ggplot() +
+#   geom_point(aes(x = lambdavec, y = numvariables)) +
+#   geom_vline(xintercept = 41.5, color = "blue", linetype = "dashed") +
+#   theme_bw() +
+#   xlab("Penalty Coefficient (Lambda)") +
+#   ylab("Number of Included Variables")
+# ggsave("lambda_elbow.png", width=6, height=4, units="in", dpi=320)
+# stop()
 
-numvariables <- numvariables - 7; #numvariables[which(numvariables < 0)] <- 0 ####
-
-ggplot() +
-  geom_point(aes(x = lambdavec, y = numvariables)) +
-  geom_vline(xintercept = 41.5, color = "blue", linetype = "dashed") +
-  theme_bw() +
-  xlab("Penalty Coefficient (Lambda)") +
-  ylab("Number of Included Variables")
-ggsave("lambda_elbow.png", width=6, height=4, units="in", dpi=320)
-stop()
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
                  data = traindf,
                  rnd = list(Participant_ID=~1, site_name=~1),
@@ -592,6 +593,8 @@ print("MODEL WITH ONLY FEATURES, basic COVARIATES")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex + race", covars_only=F)
 PredPlot
 ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
+stop()
+
 
 #make plot to see variation within each individual
 library(ggridges)
