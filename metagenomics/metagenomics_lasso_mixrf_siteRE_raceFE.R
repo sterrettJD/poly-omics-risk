@@ -312,10 +312,13 @@ for(lambdy in lambdavec){
   summary(lm1)
   lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
   lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
+  lassoFeatures <- lassoFeatures[grep("as.factor",lassoFeatures,invert=T)] ####
   lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
   numvariables <- c(numvariables, length(lassoFeatures))
 }
 plot(x = lambdavec, y = numvariables)
+
+numvariables <- numvariables - 7; #numvariables[which(numvariables < 0)] <- 0 ####
 
 ggplot() +
   geom_point(aes(x = lambdavec, y = numvariables)) + 

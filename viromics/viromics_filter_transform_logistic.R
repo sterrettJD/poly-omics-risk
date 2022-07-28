@@ -46,7 +46,8 @@ library(fmsb)
 `%ni%` <- Negate(`%in%`)
 
 # ## metadata --###################################
-# metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+# # metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+# metadata <- fread("../metagenomics/hmp2_metadata.csv", header=T, stringsAsFactors=T)
 # str(metadata)
 # 
 # 
@@ -346,7 +347,7 @@ varstring <- paste0(varlist, collapse = " + ", sep = "")
 # ## LASSO Lambda Search ######################################################
 
 numvariables <- c()
-lambdavec <- c(seq(from = 0, to = 10, by = 0.5), seq(from = 12, to = 40, by = 2))
+lambdavec <- c(seq(from = 0, to = 10, by = 0.5), seq(from = 11, to = 15, by = 1), seq(from = 16, to = 36, by = 2))
 for(lambdy in lambdavec){
   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
                    data = traindf,
@@ -356,10 +357,14 @@ for(lambdy in lambdavec){
   summary(lm1)
   lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
   lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
+  lassoFeatures <- lassoFeatures[grep("as.factor",lassoFeatures,invert=T)] ####
   lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
   numvariables <- c(numvariables, length(lassoFeatures))
 }
 plot(x = lambdavec, y = numvariables)
+
+# subtract off the 7 covariates that aren't features
+numvariables <- numvariables - 7; #numvariables[which(numvariables < 0)] <- 0 ####
 
 ggplot() +
   geom_point(aes(x = lambdavec, y = numvariables)) +

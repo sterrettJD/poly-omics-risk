@@ -34,7 +34,8 @@ library(fmsb)
 '%ni%' <- Negate('%in%')
 
 ## metadata --###################################
-metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+# metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+metadata <- fread("../metagenomics/hmp2_metadata.csv", header=T, stringsAsFactors=T)
 str(metadata)
 # metadata <- subset(metadata, data_type == "metagenomics")
 
@@ -163,7 +164,7 @@ mygrepni <- which(1:length(rownames(grouped_df_3)) %ni% mygrep)
 
 grouped_df_3 <- grouped_df_3[mygrepni,]
 
-view(grouped_df_3)
+# view(grouped_df_3)
 
 ## Preprocessing, make data compositional for species --###################################
 # grouped_df_3 <- df_3[mygrepni,]
@@ -389,10 +390,13 @@ for(lambdy in lambdavec){
   summary(lm1)
   lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
   lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
+  lassoFeatures <- lassoFeatures[grep("as.factor",lassoFeatures,invert=T)] ####
   lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
   numvariables <- c(numvariables, length(lassoFeatures))
 }
 plot(x = lambdavec, y = numvariables)
+
+numvariables <- numvariables - 7; #numvariables[which(numvariables < 0)] <- 0 ####
 
 ggplot() +
   geom_point(aes(x = lambdavec, y = numvariables)) + 
