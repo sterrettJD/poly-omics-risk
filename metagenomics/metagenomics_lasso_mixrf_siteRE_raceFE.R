@@ -302,7 +302,7 @@ varstring <- paste0(varlist, collapse = " + ", sep = "")
 ## LASSO Lambda Search ######################################################
 # stop()
 numvariables <- c()
-lambdavec <- seq(from = 80, to = 125, by = 2)
+lambdavec <- seq(from = 50, to = 130, by = 2)
 for(lambdy in lambdavec){
   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
                    data = traindf,
@@ -316,6 +316,16 @@ for(lambdy in lambdavec){
   numvariables <- c(numvariables, length(lassoFeatures))
 }
 plot(x = lambdavec, y = numvariables)
+
+ggplot() +
+  geom_point(aes(x = lambdavec, y = numvariables)) + 
+  geom_vline(xintercept = 112, color = "blue", linetype = "dashed") +
+  theme_bw() +
+  xlab("Penalty Coefficient (Lambda)") +
+  ylab("Number of Included Variables")
+ggsave("lambda_elbow.png", width=6, height=4, units="in", dpi=320)
+
+stop()
 
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
                  data = traindf, 
@@ -478,6 +488,7 @@ boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
   
   print(caseControlAUCsummary)
   print(caseControlpthresh)
+  print(nagelkerke(caseControlGLM, null = NULL, restrictNobs = FALSE))
   return(PredPlot)
 }
 

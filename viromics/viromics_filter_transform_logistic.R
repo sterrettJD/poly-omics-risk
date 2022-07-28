@@ -345,22 +345,31 @@ varstring <- paste0(varlist, collapse = " + ", sep = "")
 
 # ## LASSO Lambda Search ######################################################
 
-# numvariables <- c()
-# lambdavec <- seq(from = 0, to = 50, by = 1)
-# for(lambdy in lambdavec){
-#   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
-#                    data = traindf,
-#                    rnd = list(Participant_ID=~1),
-#                    lambda=lambdy,
-#                    family = binomial(link = "logit"))
-#   summary(lm1)
-#   lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
-#   lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
-#   lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
-#   numvariables <- c(numvariables, length(lassoFeatures))
-# }
-# plot(x = lambdavec, y = numvariables)
+numvariables <- c()
+lambdavec <- c(seq(from = 0, to = 10, by = 0.5), seq(from = 12, to = 40, by = 2))
+for(lambdy in lambdavec){
+  lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),
+                   data = traindf,
+                   rnd = list(Participant_ID=~1),
+                   lambda=lambdy,
+                   family = binomial(link = "logit"))
+  summary(lm1)
+  lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
+  lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
+  lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
+  numvariables <- c(numvariables, length(lassoFeatures))
+}
+plot(x = lambdavec, y = numvariables)
 
+ggplot() +
+  geom_point(aes(x = lambdavec, y = numvariables)) +
+  geom_vline(xintercept = 5, color = "blue", linetype = "dashed") +
+  theme_bw() +
+  xlab("Penalty Coefficient (Lambda)") +
+  ylab("Number of Included Variables")
+ggsave("lambda_elbow.png", width=6, height=4, units="in", dpi=320)
+
+stop()
 ## LASSO regression with lambda=5 -##########################################################################
 
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring)),

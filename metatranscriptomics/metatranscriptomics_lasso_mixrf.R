@@ -376,9 +376,10 @@ varlist_nocolin <- c(varlist[which(varlist %in% colnames(train_df))],
                     "Antibiotics")
 varstring_nocolin <- paste0(varlist_nocolin, collapse = " + ", sep = "")
 
+# ## LASSO Lambda Search ######################################################
 
 numvariables <- c()
-lambdavec <- seq(from = 10, to = 110, by = 5)
+lambdavec <- seq(from = 10, to = 50, by = 1)
 for(lambdy in lambdavec){
   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
                    data = train_df,
@@ -393,7 +394,16 @@ for(lambdy in lambdavec){
 }
 plot(x = lambdavec, y = numvariables)
 
+ggplot() +
+  geom_point(aes(x = lambdavec, y = numvariables)) + 
+  geom_vline(xintercept = 25, color = "blue", linetype = "dashed") +
+  theme_bw() +
+  xlab("Penalty Coefficient (Lambda)") +
+  ylab("Number of Included Variables")
+ggsave("lambda_elbow.png", width=6, height=4, units="in", dpi=320)
+
 lassoFeatures
+stop()
 
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
                  data = traindf, 
@@ -581,7 +591,7 @@ print("MODEL WITH ONLY FEATURES, basic COVARIATES")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex + race", covars_only=F)
 PredPlot
 ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
-<<<<<<< HEAD
+
 # stop()
 
 #make plot to see variation within each individual
@@ -612,13 +622,13 @@ ggplot(sort_m_pred_df, aes(x = predicted, y = Participant_ID, fill = stat(x))) +
   theme(legend.position="bottom", legend.key.width = unit(1.7, 'cm'), legend.text = element_blank())
 ggsave("scores_per_individual.png", width=4.31, height=5.7, units="in", dpi=320, bg='#ffffff')
 # stop()
-=======
+
 
 #diagnosis ~ score + age + sex
 print("MODEL WITH ONLY FEATURES AND COVARIATES")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "age + sex + race", covars_only=F)
 PredPlot
->>>>>>> c9cbe90b1d4b0c547fc5872e18603b4b3dbd3d7d
+
 
 # null model
 

@@ -84,7 +84,7 @@ viromic_glmer
 
 # metagenomics
 # setwd(glue("{base_dir}metagenomics"))
-metagenomic_glmer <- fread("./metagenomics/metatragenomics_features_scores.txt", header=T)
+metagenomic_glmer <- fread("./metagenomics/metagenomics_features_scores.txt", header=T)
 metagenomic_glmer <- as.data.frame(metagenomic_glmer[,c("External_ID","predicted")])
 metagenomic_glmer <- metagenomic_glmer %>% rename("metagen_pred" = "predicted")
 metagenomic_glmer
@@ -138,7 +138,7 @@ rownames(df_for_model) <- df_for_model$`Participant_ID`
 df_for_model$`Participant_ID` <- NULL
 
 # view(df_for_model)
-colnames(df_for_model) <- c("diagnosis","consent_age","race","sex","site_name","VIR","MTG","MTX","MTB")
+colnames(df_for_model) <- c("diagnosis","consent_age","race","sex","site_name","VRM","MGN","MTS","MBL")
 
 
 ## combined regression --#####
@@ -150,46 +150,129 @@ combomod_sum <- summary(combomod)
 combomod_sum
 
 
-combomod_nocovar <- glm(as.formula(paste0("diagnosis ~ VIR + MTG + MTX + MTB")), data = df_for_model, family = "binomial")
+combomod_nocovar <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + MBL")), data = df_for_model, family = "binomial")
 
 combomod_nocovar_sum <- summary(combomod_nocovar)
 combomod_nocovar_sum
 
-combomod_somecovar <- glm(as.formula(paste0("diagnosis ~ VIR + MTG + MTX + MTB + consent_age + sex")), data = df_for_model, family = "binomial")
+combomod_somecovar <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
 
 combomod_somecovar_sum <- summary(combomod_somecovar)
 combomod_somecovar_sum
 plot_model(combomod_somecovar, vline.color = 'gray') + theme_bw()
 
+# leave one out
+loomod <- glm(as.formula(paste0("diagnosis ~ MGN + MTS + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
+plot_model(loomod, vline.color = 'gray') + theme_bw()
+loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MTS + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
+plot_model(loomod, vline.color = 'gray') + theme_bw()
+loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
+plot_model(loomod, vline.color = 'gray') + theme_bw()
+loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + consent_age + sex")), data = df_for_model, family = "binomial")
+plot_model(loomod, vline.color = 'gray') + theme_bw()
+
 combomod_only_somecovar <- glm(as.formula(paste0("diagnosis ~ consent_age + sex")), data = df_for_model, family = "binomial")
-# nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE)
+# Nagelkerke (Cragg and Uhler)        0.1108910 (using only age and sex)
+nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE)
 
 combomod_only_somecovar <- summary(combomod_only_somecovar)
 combomod_only_somecovar
 ## nagelkerke R #####
 
 
-NagelkerkeR2(combomod_nocovar)
+NagelkerkeR2(combomod_nocovar) #0.3276909 (using only the scores)
 NagelkerkeR2(combomod)
 NagelkerkeR2(combomod_somecovar)
 NagelkerkeR2(combomod_only_somecovar)
 
 library(rcompanion)
 nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE)
+# Nagelkerke (Cragg and Uhler)         0.403341 (using scores + age & sex)
 nagelkerke(combomod_somecovar, null = NULL, restrictNobs = FALSE)
 
 library(corrplot)
-mtcor <- as.matrix(df_for_model[,c("VIR","MTG","MTX","MTB")])
+mtcor <- as.matrix(df_for_model[,c("VRM","MGN","MTS","MBL")])
 M = cor(mtcor)
 testRes = cor.mtest(mtcor, conf.level = 0.95)
 
 corrplot.mixed(M)
 corrplot(M, addCoef.col = 'black', tl.pos = 'd',
          cl.pos = 'n', col = COL2('PiYG'), type = "lower")
+########## make auc plot
+
+auc_df = df_for_model
+
+auc_df$diagnosis <- as.factor(auc_df$diagnosis)
+auc_df$predicted <- as.numeric(scale(auc_df$VRM + auc_df$MGN + auc_df$MTS + auc_df$MBL))
+PredPlot <- ggplot(data = auc_df, aes(x = diagnosis, y = predicted))+
+  scale_fill_viridis_d( option = "D")+
+  theme_dark()+
+  geom_violin(fill = "gray70",alpha=0.4, position = position_dodge(width = .5),size=1,color="gray22",width=.5,lwd=.2) +
+  geom_boxplot(fill = "gray95",notch = F, shape=21, outlier.size = -1, color="gray32",lwd=.5, alpha = .75)+
+  theme(plot.title = element_text(hjust = 0.5))+
+  # theme(axis.title.x = element_text(size=14))+
+  theme(axis.text.x = element_text(colour = "black"))+
+  theme(axis.text.y = element_text(colour = "black"))+
+  theme( axis.line = element_line(colour = "black", size = 0.5, linetype = "solid"))+
+  theme(panel.grid.major.x = element_blank())+
+  theme(panel.background = element_rect(fill = 'white'), panel.grid = element_line(color='gray80'))+
+  # labs(title = addToTitle)+
+  ylab("Score (VRM + MGN + MTS + MBL)")+
+  xlab("Actual Diagnosis")
+
+
+# caseControlGLM <- glm(as.formula(auc_df$diagnosis ~ auc_df$predicted), data = auc_df, family = "binomial", na.action = na.omit)
+caseControlGLM <- glm(as.formula(auc_df$diagnosis ~ auc_df$predicted + auc_df$consent_age + auc_df$sex), data = auc_df, family = "binomial", na.action = na.omit)
+
+
+predpr <- predict(caseControlGLM, auc_df, allow.new.levels = T, type = c("response"))
+caseControlroccurve <- pROC::roc(auc_df$diagnosis ~ predpr, quiet=T, plot=T)
+caseControlroccurveCI <- pROC::roc(auc_df$diagnosis ~ predpr, ci=T, quiet=T)
+nr2 <- NagelkerkeR2(caseControlGLM)$R2
+print(paste0("Nagelkerke's R2: ", nr2))
+# caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
+
+caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
+caseControlOR <- exp(cbind("Odds ratio" = coef(caseControlGLM), confint.default(caseControlGLM, level = 0.95)))
+if (as.numeric(strsplit(caseControlp,"")[[1]][1]) == 1){
+  caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
+}else{
+  caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p < ", 10*as.numeric(caseControlp)/as.numeric(strsplit(caseControlp,"")[[1]][1]))
+}  
+if (as.numeric(caseControlp) >= 0.001){
+  caseControlpthresh <- paste0("OR [95% CI] = ", format(round(as.numeric(caseControlOR[2,1]), 2), nsmall = 2), " [", format(round(as.numeric(caseControlOR[2,2]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlOR[2,3]), 2),nsmal = 2),"], ","p = ", formatC(as.numeric(caseControlp), format = "g"))
+}
+caseControlAUCsummary <- paste0("AUC [95% CI] = ", format(round(as.numeric(caseControlroccurve$auc), 2), nsmall = 2), " [", format(round(as.numeric(caseControlroccurveCI$ci[1]), 2),nsmal = 2), ", ", format(round(as.numeric(caseControlroccurveCI$ci[3]), 2),nsmal = 2),"]")
+caseControlORsummary <- caseControlpthresh
+
+label_disty = .13
+minPRS <- min(auc_df$predicted)-(abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*1.5*1.02)
+maxPRS <- max(auc_df$predicted) + (abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*1.5*1.02)
+botLabLoc <- min(auc_df$predicted)-(abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*1.5)
+topLabLoc <- max(auc_df$predicted) + (abs(max(auc_df$predicted)-min(auc_df$predicted)))*(label_disty*0.21)
+
+plot_df <- as.data.frame(cbind(caseControlGLM$fitted.values, auc_df$diagnosis))
+
+colnames(plot_df) <- c("predicted", "diagnosis")
+plot_df$diagnosis <- as.factor(plot_df$diagnosis)
+
+
+PredPlot <- PredPlot +
+  geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlAUCsummary, color="black", y_position = topLabLoc,tip_length=.03)+
+  geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlpthresh, color="black", y_position = botLabLoc,tip_length=-.03) +
+  scale_y_continuous(breaks = seq(-100,100, by=2), limits = c(minPRS,maxPRS))
+
+print(caseControlAUCsummary)
+print(caseControlpthresh)
+PredPlot
+ggsave("combinde_scores_auc.png", width=3, height=3, units="in", dpi=320)
+
+
+
 
 # #---make a regression tree---#########################################################################################################################################################################
 # require(tree)
-mytree <- tree(diagnosis ~ VIR + MTG + MTX + MTB, data = df_for_model, control = tree.control(mindev =0, minsize=3, nobs=29) )
+mytree <- tree(diagnosis ~ VRM + MGN + MTS + MBL, data = df_for_model, control = tree.control(mindev =0, minsize=3, nobs=29) )
 plot(mytree)
 text(mytree, pretty = 1, cex = .8,  digits = 1)
 
