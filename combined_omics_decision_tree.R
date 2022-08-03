@@ -1,6 +1,7 @@
 # base_dir = "C:\\Users\\rgarr\\Documents\\poly-omics-risk\\"
 # setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/viromics/")
-base_dir = "/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk"
+# base_dir = "/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk"
+base_dir = "C:/Users/chris/OneDrive/Documents/poly-omics-risk"
 
 # list.files("./viromics/")
 
@@ -156,7 +157,7 @@ combomod_nocovar <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + MBL")),
 combomod_nocovar_sum <- summary(combomod_nocovar)
 combomod_nocovar_sum
 
-combomod_somecovar <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + MBL + consent_age + sex + race")), data = df_for_model, family = "binomial")
+combomod_somecovar <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
 
 combomod_somecovar_sum <- summary(combomod_somecovar)
 combomod_somecovar_sum
@@ -164,16 +165,16 @@ plot_model(combomod_somecovar, vline.color = 'gray') + theme_bw()
 ggsave("combined_model_forest_OR.png", width=4, height=3, units="in", dpi=320)
 
 # leave one out
-loomod <- glm(as.formula(paste0("diagnosis ~ MGN + MTS + MBL + consent_age + sex + race")), data = df_for_model, family = "binomial")
+loomod <- glm(as.formula(paste0("diagnosis ~ MGN + MTS + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
 plot_model(loomod, vline.color = 'gray') + theme_bw()
-loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MTS + MBL + consent_age + sex + race")), data = df_for_model, family = "binomial")
+loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MTS + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
 plot_model(loomod, vline.color = 'gray') + theme_bw()
-loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MBL + consent_age + sex + race")), data = df_for_model, family = "binomial")
+loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MBL + consent_age + sex")), data = df_for_model, family = "binomial")
 plot_model(loomod, vline.color = 'gray') + theme_bw()
-loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + consent_age + sex + race")), data = df_for_model, family = "binomial")
+loomod <- glm(as.formula(paste0("diagnosis ~ VRM + MGN + MTS + consent_age + sex")), data = df_for_model, family = "binomial")
 plot_model(loomod, vline.color = 'gray') + theme_bw()
 
-combomod_only_somecovar <- glm(as.formula(paste0("diagnosis ~ consent_age + sex + race")), data = df_for_model, family = "binomial")
+combomod_only_somecovar <- glm(as.formula(paste0("diagnosis ~ consent_age + sex")), data = df_for_model, family = "binomial")
 # Nagelkerke (Cragg and Uhler)        0.285719 (using only age sex and race)
 nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE)
 
@@ -189,7 +190,7 @@ NagelkerkeR2(combomod_only_somecovar)
 
 library(rcompanion)
 nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE)
-# Nagelkerke (Cragg and Uhler)         0.502669 (using scores + age + sex + race)
+# Nagelkerke (Cragg and Uhler)         0.403341 (using scores + age + sex + race)
 nagelkerke(combomod_somecovar, null = NULL, restrictNobs = FALSE)
 
 library(corrplot)
@@ -225,7 +226,7 @@ PredPlot <- ggplot(data = auc_df, aes(x = diagnosis, y = predicted))+
 
 
 # caseControlGLM <- glm(as.formula(auc_df$diagnosis ~ auc_df$predicted), data = auc_df, family = "binomial", na.action = na.omit)
-caseControlGLM <- glm(as.formula(auc_df$diagnosis ~ auc_df$predicted + auc_df$consent_age + auc_df$sex + auc_df$race), data = auc_df, family = "binomial", na.action = na.omit)
+caseControlGLM <- glm(as.formula(auc_df$diagnosis ~ auc_df$predicted + auc_df$consent_age + auc_df$sex), data = auc_df, family = "binomial", na.action = na.omit)
 
 
 predpr <- predict(caseControlGLM, auc_df, allow.new.levels = T, type = c("response"))
@@ -269,7 +270,7 @@ print(caseControlAUCsummary)
 print(caseControlpthresh)
 PredPlot
 ggsave("combinde_scores_auc.png", width=3, height=3, units="in", dpi=320)
-
+stop()
 
 
 
