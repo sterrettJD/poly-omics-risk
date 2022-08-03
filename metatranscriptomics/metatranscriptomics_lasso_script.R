@@ -1,6 +1,6 @@
 # setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/metatranscriptomics")
-# setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
-setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metatranscriptomics")
+setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
+# setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metatranscriptomics")
 
 list.files()
 
@@ -35,9 +35,9 @@ library(fmsb)
 '%ni%' <- Negate('%in%')
 
 ## metadata --###################################
-# metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
-metadata <- fread("../metagenomics/hmp2_metadata.csv", header=T, stringsAsFactors=T)
-str(metadata)
+metadata <- fread("https://ibdmdb.org/tunnel/products/HMP2/Metadata/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+# metadata <- fread("../metagenomics/hmp2_metadata.csv", header=T, stringsAsFactors=T)
+head(metadata)
 # metadata <- subset(metadata, data_type == "metagenomics")
 
 # make barplt by data type
@@ -165,8 +165,6 @@ mygrepni <- which(1:length(rownames(grouped_df_3)) %ni% mygrep)
 
 grouped_df_3 <- grouped_df_3[mygrepni,]
 
-# view(grouped_df_3)
-
 ## Preprocessing, make data compositional for species --###################################
 # grouped_df_3 <- df_3[mygrepni,]
 # rownames(grouped_df_3) <- rownames(df_3)[mygrepni]
@@ -190,9 +188,8 @@ summary(colSums(num_grouped_df_3))
 # View(num_grouped_df_3[rowMeans(num_grouped_df_3) > 10,])
 
 # normalize by sample sum
-# if(normalize == T){
-#     num_grouped_df_3 <- as.data.frame(scale(num_grouped_df_3, center=FALSE, scale=colSums(num_grouped_df_3)))
-# }
+num_grouped_df_3 <- as.data.frame(scale(num_grouped_df_3, center=FALSE, scale=colSums(num_grouped_df_3)))
+
 
 # add epsilon to all entries to set up for center log transform
 pepsi <- 1E-06
