@@ -600,7 +600,7 @@ PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex",
 PredPlot
 ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
 
-stop()
+
 
 #make plot to see variation within each individual
 library(ggridges)
