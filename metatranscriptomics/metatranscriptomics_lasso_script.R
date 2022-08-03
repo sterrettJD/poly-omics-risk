@@ -697,6 +697,8 @@ df2 <- featureplot_df %>%
   dplyr::arrange(Estimate) %>%
   dplyr::mutate(variable = forcats::fct_inorder(variable))
 
+df2 %>% write.table("variable_importance.txt", sep="\t")
+
 plot_varimp2 <- ggplot2::ggplot(df2) +
   geom_segment(
     aes(
