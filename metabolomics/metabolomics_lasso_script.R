@@ -1,8 +1,8 @@
 
 # setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/metabolomics")
 # setwd("/home/romulo/Polyomic_project/poly-omics-risk/metabolomics")
-setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metabolomics")
-
+# setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metabolomics")
+setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metabolomics")
 list.files()
 
 # install.packages("data.table")
@@ -708,19 +708,28 @@ df2 <- featureplot_df %>%
   dplyr::rename("variable" = rowname) %>%
   dplyr::arrange(Estimate) %>%
   dplyr::mutate(variable = forcats::fct_inorder(variable))
+df2$variable <- df2$variable %>% as.character()
+
+# map compound names
+for(met in df2$variable){
+    df2[df2$Feature==met, "variable"] <- fname[fname$Compound==met, "Metabolite"]
+}
+
+df2 %>% write.table("variable_importance.txt", sep="\t")
+
 
 plot_varimp2 <- ggplot2::ggplot(df2) +
   geom_segment(
     aes(
-      x = variable,
+      x = Feature,
       y = 0,
-      xend = variable,
+      xend = Feature,
       yend = Estimate
     ),
     size = 1.5,
     alpha = 0.7
   ) +
-  geom_point(aes(x = variable, y = Estimate, col = variable),
+  geom_point(aes(x = Feature, y = Estimate, col = Feature),
              size = 2,
              show.legend = F) +
   coord_flip() +
@@ -780,6 +789,8 @@ df2 <- newdf %>%
   dplyr::rename("variable" = rowname) %>%
   dplyr::arrange(imp) %>%
   dplyr::mutate(variable = forcats::fct_inorder(variable))
+
+
 plot_varimp2 <- ggplot2::ggplot(df2) +
   geom_segment(
     aes(
