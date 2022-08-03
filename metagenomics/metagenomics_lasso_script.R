@@ -1,7 +1,10 @@
 
 # setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/metagenomics")
-# setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metagenomics")
-setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metagenomics")
+setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metagenomics")
+# setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metagenomics")
+
+zz <- file("sink.txt", open = "wt")
+sink(zz, type = "message")
 
 list.files()
 
@@ -455,7 +458,7 @@ boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
   caseControlroccurve <- pROC::roc(avg_par_scores$actual ~ predpr, quiet=T, plot=T)
   caseControlroccurveCI <- pROC::roc(avg_par_scores$actual ~ predpr, ci=T, quiet=T)
   nr2 <- NagelkerkeR2(caseControlGLM)$R2
-  print(paste0("Nagelkerke's R2: ", nr2))
+  message(paste0("Nagelkerke's R2: ", nr2))
   # caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
   
   caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
@@ -491,8 +494,8 @@ boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
     geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlpthresh, color="black", y_position = botLabLoc,tip_length=-.03) +
     scale_y_continuous(breaks = seq(-100,100, by=2), limits = c(minPRS,maxPRS))
   
-  print(caseControlAUCsummary)
-  print(caseControlpthresh)
+  message(caseControlAUCsummary)
+  message(caseControlpthresh)
   return(PredPlot)
 }
 
@@ -517,10 +520,15 @@ avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 # diagnosis ~ score
 print("MODEL WITH ONLY FEATURES, basic COVARIATES")
+message("pred_score_age_sex.png")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex", covars_only=F)
 PredPlot
-ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
-stop()
+ggsave("pred_score_age_sex.png", width=2.5, height=2.5, units="in", dpi=320)
+message("pred_score.png")
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+PredPlot
+ggsave("pred_score.png", width=2.5, height=2.5, units="in", dpi=320)
+
 
 #make plot to see variation within each individual
 library(ggridges)
@@ -574,6 +582,7 @@ rownames(avg_par_scores) <- avg_par_scores$Participant_ID
 avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 print("NULL COVARIATE MODEL")
+message("pred_null.png")
 PredPlotNull <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
 PredPlotNull
 ggsave("pred_null.png", width=2.5, height=2.5, units="in", dpi=320)
@@ -582,6 +591,8 @@ pred_df
 metagenomics_pred_score_featuresonly <- tibble::rownames_to_column(pred_df, "External_ID")
 write.table(metagenomics_pred_score_featuresonly, "metagenomics_features_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
 
+sink()
+stop()
 # remove the intercept
 featureplot_df <- mod_coef_df_nocovar[2:nrow(mod_coef_df_nocovar),]
 featureplot_df$Feature <- rownames(featureplot_df)
