@@ -1,6 +1,7 @@
 
 # setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/metagenomics")
-setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metagenomics")
+# setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metagenomics")
+setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metagenomics")
 
 list.files()
 
@@ -593,6 +594,8 @@ df2 <- featureplot_df %>%
   dplyr::arrange(Estimate) %>%
   dplyr::mutate(variable = forcats::fct_inorder(variable))
 
+df2 %>% write.table("variable_importance.txt", sep="\t")
+
 plot_varimp2 <- ggplot2::ggplot(df2) +
   geom_segment(
     aes(
@@ -666,6 +669,9 @@ df2 <- newdf %>%
   dplyr::rename("variable" = rowname) %>%
   dplyr::arrange(imp) %>%
   dplyr::mutate(variable = forcats::fct_inorder(variable))
+
+df2 %>% write.table("variable_importance.txt", sep="\t")
+
 plot_varimp2 <- ggplot2::ggplot(df2) +
   geom_segment(
     aes(
