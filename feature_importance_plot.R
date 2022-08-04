@@ -22,8 +22,11 @@ mbl$Column <- mbl$Column %>%
                                         no=ifelse(x=="HILn", yes="HIL (neg)",
                                                   no="HIL (pos)"))))
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 52be0213034eeb72898b83dd23c8f60adc71ecf8
 mbl$variable <- mbl$variable %>% as.character()
 mbl$new_variable <- mbl$variable
 
@@ -38,8 +41,6 @@ for(m in unique(mbl$variable)){
 
 # update MTS pathway names
 mts$variable <- mts$variable %>% sapply(function(x) str_split(x, ":", simplify = T)[1,2])
-
-
 
 # plotting
 make_plot <- function(data, feature_text_scaling) {

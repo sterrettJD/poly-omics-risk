@@ -2,7 +2,6 @@ library(tidyverse)
 library(data.table)
 library(vegan) #for distance matrix
 library(ape) # for pcoa
-library(PERMANOVA)
 library(ggplot2)
 library(stringr)
 `%ni%` <- Negate(`%in%`)

@@ -63,7 +63,7 @@ str(metadata)
 # metadata <- subset(metadata, data_type == "metagenomics")
 
 # make barplt by data type
-par(mar = c(9, 4, 2, 2) + 1)
+par(mar = c(9, 2, 2, 2) + 1)
 barplot(summary(metadata$data_type),las=2)
 dev.off()
 # make upset plot for sample overlap by datatype
