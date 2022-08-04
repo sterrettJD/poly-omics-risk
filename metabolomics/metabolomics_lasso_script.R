@@ -483,8 +483,8 @@ pred_df$actual <- as.factor(pred_df$actual)
 
 
 # null model with only covariates
-mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ site_name + consent_age + sex + race + Antibiotics + (1|Participant_ID)"), 
-                               data = df_bestglm, 
+mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ consent_age + sex + race + Antibiotics + (1|Participant_ID) + (1|site_name)"),
+                               data = df_bestglm,
                                family = binomial)
 
 # predict based on only covariates

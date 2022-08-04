@@ -467,8 +467,8 @@ pred_df$actual <- as.factor(pred_df$actual)
 
 
 # null model with only covariates
-mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ (1|site_name) + consent_age + sex + race + Antibiotics + (1|Participant_ID)"),
-                               data = df_bestglm, #[sample(1:nrow(df_bestglm),round(nrow(df_bestglm)*.6)),], 
+mymod_ONLYcovar <- lme4::glmer(as.formula("diagnosis ~ consent_age + sex + race + Antibiotics + (1|Participant_ID) + (1|site_name)"),
+                               data = df_bestglm,
                                family = binomial)
 
 # library(brglm2)
