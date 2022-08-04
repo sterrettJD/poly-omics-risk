@@ -100,11 +100,11 @@ mbl_plot <- make_plot(mbl, feature_text_scaling=8)
 
 p <- ggarrange(mgn_plot, mts_plot, vir_plot, mbl_plot,
                labels = c("MGN", "MTS", "VIR", "MBL"), align = "h", 
-               label.x = c(0.5, 0.5, 0.5, 0.5) 
+               label.x = c(0.5, 0.5, 0.5, 0.5) ,
                )
 
 p
-ggsave("variable_importance_quad.png")
+ggsave("variable_importance_quad.png", height = 8)
 
 
 
