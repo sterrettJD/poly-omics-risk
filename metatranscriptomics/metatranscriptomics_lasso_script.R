@@ -1,6 +1,6 @@
 # setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/metatranscriptomics")
-# setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
-setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metatranscriptomics")
+setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
+# setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metatranscriptomics")
 
 zz <- file("sink.txt", open = "wt")
 sink(zz, type = "message")
