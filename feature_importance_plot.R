@@ -22,11 +22,7 @@ mbl$Column <- mbl$Column %>%
                                         no=ifelse(x=="HILn", yes="HIL (neg)",
                                                   no="HIL (pos)"))))
 
-<<<<<<< HEAD
 
-
-=======
->>>>>>> 52be0213034eeb72898b83dd23c8f60adc71ecf8
 mbl$variable <- mbl$variable %>% as.character()
 mbl$new_variable <- mbl$variable
 
@@ -41,6 +37,11 @@ for(m in unique(mbl$variable)){
 
 # update MTS pathway names
 mts$variable <- mts$variable %>% sapply(function(x) str_split(x, ":", simplify = T)[1,2])
+
+# remove _
+mgn$variable <- mgn$variable %>% sapply(function(x) gsub("_", " ", x, fixed=TRUE))
+vir$variable <- vir$variable %>% sapply(function(x) gsub("_", " ", x, fixed=TRUE))
+
 
 # plotting
 make_plot <- function(data, feature_text_scaling) {
@@ -64,7 +65,6 @@ make_plot <- function(data, feature_text_scaling) {
         coord_flip() +
         labs(y = "Weight", x = NULL, title = "") +
         theme_bw() +
-        theme(legend.title = element_text(size = 14)) +
         theme(
             axis.text.x = element_text(
                 color = "black",
@@ -92,13 +92,18 @@ make_plot <- function(data, feature_text_scaling) {
 }
 
 
-mbl_plot <- make_plot(mbl, feature_text_scaling=8)
+
 mgn_plot <- make_plot(mgn, feature_text_scaling=8)
 mts_plot <- make_plot(mts, feature_text_scaling=6)
 vir_plot <- make_plot(vir, feature_text_scaling=8)
+mbl_plot <- make_plot(mbl, feature_text_scaling=8)
 
-ggarrange(mbl_plot, mgn_plot, mts_plot, vir_plot)
+p <- ggarrange(mgn_plot, mts_plot, vir_plot, mbl_plot,
+               labels = c("MGN", "MTS", "VIR", "MBL"), align = "h", 
+               label.x = c(0.5, 0.5, 0.5, 0.5) 
+               )
 
+p
 ggsave("variable_importance_quad.png")
 
 
