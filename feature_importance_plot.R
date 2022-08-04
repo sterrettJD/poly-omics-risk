@@ -14,7 +14,14 @@ mbl$omic <- "MBL"; mgn$omic <- "MGN"; mts$omic <- "MTS"; vir$omic <- "VIR"
 # mbl add a column for column
 mbl$Column <- mbl$Feature %>% 
     as.character() %>% 
-    sapply(function(x) substr(x, 1, 3))
+    sapply(function(x) substr(x, 1, 4)) 
+
+mbl$Column <- mbl$Column %>% 
+    sapply(function(x) ifelse(x=="C18n", yes="C18 ",
+                              no=ifelse(x=="C8p_", yes="C8",
+                                        no=ifelse(x=="HILn", yes="HIL (neg)",
+                                                  no="HIL (pos)"))))
+
 mbl$variable <- mbl$variable %>% as.character()
 mbl$new_variable <- mbl$variable
 
@@ -29,8 +36,6 @@ for(m in unique(mbl$variable)){
 
 # update MTS pathway names
 mts$variable <- mts$variable %>% sapply(function(x) str_split(x, ":", simplify = T)[1,2])
-
-
 
 # plotting
 make_plot <- function(data, feature_text_scaling) {
