@@ -1,6 +1,9 @@
 # setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk/metatranscriptomics")
-setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
-# setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metatranscriptomics")
+# setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/metatranscriptomics/")
+setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk/metatranscriptomics")
+
+zz <- file("sink.txt", open = "wt")
+sink(zz, type = "message")
 
 list.files()
 
@@ -377,34 +380,34 @@ varstring_nocolin <- paste0(varlist_nocolin, collapse = " + ", sep = "")
 
 # ## LASSO Lambda Search ######################################################
 
-# numvariables <- c()
-# lambdavec <- seq(from = 10, to = 50, by = 1)
-# for(lambdy in lambdavec){
-#   lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
-#                    data = train_df,
-#                    rnd = list(Participant_ID=~1, site_name=~1),
-#                    lambda=lambdy,
-#                    family = binomial(link = "logit"))
-#   summary(lm1)
-#   lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
-#   lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
-#   lassoFeatures <- lassoFeatures[grep("as.factor",lassoFeatures,invert=T)] ####
-#   lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
-#   numvariables <- c(numvariables, length(lassoFeatures))
-# }
-# plot(x = lambdavec, y = numvariables)
-# 
-# numvariables <- numvariables - 7; #numvariables[which(numvariables < 0)] <- 0 ####
-# 
-# ggplot() +
-#   geom_point(aes(x = lambdavec, y = numvariables)) +
-#   geom_vline(xintercept = 25, color = "blue", linetype = "dashed") +
-#   theme_bw() +
-#   xlab("Penalty Coefficient (Lambda)") +
-#   ylab("Number of Included Variables")
-# ggsave("lambda_elbow.png", width=6, height=4, units="in", dpi=320)
-# 
-# lassoFeatures
+numvariables <- c()
+lambdavec <- seq(from = 10, to = 50, by = 1)
+for(lambdy in lambdavec){
+  lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
+                   data = train_df,
+                   rnd = list(Participant_ID=~1, site_name=~1),
+                   lambda=lambdy,
+                   family = binomial(link = "logit"))
+  summary(lm1)
+  lassoFeatures <- names(lm1$coefficients[which(lm1$coefficients != 0)])
+  lassoFeatures <- lassoFeatures[lassoFeatures %ni% c("(Intercept)")]
+  lassoFeatures <- lassoFeatures[grep("as.factor",lassoFeatures,invert=T)] ####
+  lassoFeatures <- unique(c(lassoFeatures, "Participant_ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics"))
+  numvariables <- c(numvariables, length(lassoFeatures))
+}
+plot(x = lambdavec, y = numvariables)
+
+numvariables <- numvariables - 7; #numvariables[which(numvariables < 0)] <- 0 ####
+
+ggplot() +
+  geom_point(aes(x = lambdavec, y = numvariables)) +
+  geom_vline(xintercept = 25, color = "blue", linetype = "dashed") +
+  theme_bw() +
+  xlab("Penalty Coefficient (Lambda)") +
+  ylab("Number of Included Variables")
+ggsave("lambda_elbow.png", width=6, height=4, units="in", dpi=320)
+
+lassoFeatures
 # stop()
 
 lm1 <- glmmLasso(as.formula(paste0("diagnosis ~ ",varstring_nocolin)),
@@ -535,7 +538,7 @@ boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
   caseControlroccurve <- pROC::roc(avg_par_scores$actual ~ predpr, quiet=T, plot=T)
   caseControlroccurveCI <- pROC::roc(avg_par_scores$actual ~ predpr, ci=T, quiet=T)
   nr2 <- NagelkerkeR2(caseControlGLM)$R2
-  print(paste0("Nagelkerke's R2: ", nr2))
+  message(paste0("Nagelkerke's R2: ", nr2))
   # caseControlplot <- plot(caseControlroccurve, main=paste("Case vs Control AUC =", round(caseControlroccurve$auc, 3)))
   
   caseControlp <- formatC(coef(summary(caseControlGLM))[,4][2], format = "e", digits = 0)
@@ -571,8 +574,8 @@ boxViolinPlot <- function(auc_df = avg_par_scores, covars = "", covars_only=F){
     geom_signif(textsize = 2.25, comparisons = list(c("0", "1")), annotations=caseControlpthresh, color="black", y_position = botLabLoc,tip_length=-.03) +
     scale_y_continuous(breaks = seq(-100,100, by=2), limits = c(minPRS,maxPRS))
   
-  print(caseControlAUCsummary)
-  print(caseControlpthresh)
+  message(caseControlAUCsummary)
+  message(caseControlpthresh)
   return(PredPlot)
 }
 
@@ -596,9 +599,14 @@ avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 # diagnosis ~ score
 print("MODEL WITH ONLY FEATURES, basic COVARIATES")
+message("pred_score_age_sex.png")
 PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "consent_age + sex", covars_only=F)
 PredPlot
-ggsave("pred_features.png", width=2.5, height=2.5, units="in", dpi=320)
+ggsave("pred_score_age_sex.png", width=2.5, height=2.5, units="in", dpi=320)
+message("pred_score.png")
+PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+PredPlot
+ggsave("pred_score.png", width=2.5, height=2.5, units="in", dpi=320)
 
 
 
@@ -631,11 +639,11 @@ ggplot(sort_m_pred_df, aes(x = predicted, y = Participant_ID, fill = stat(x))) +
 ggsave("scores_per_individual.png", width=4.31, height=5.7, units="in", dpi=320, bg='#ffffff')
 # stop()
 
-
-#diagnosis ~ score + age + sex
-print("MODEL WITH ONLY FEATURES AND COVARIATES")
-PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "age + sex + race", covars_only=F)
-PredPlot
+# 
+# #diagnosis ~ score + age + sex
+# print("MODEL WITH ONLY FEATURES AND COVARIATES")
+# PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "age + sex + race", covars_only=F)
+# PredPlot
 
 
 # null model
@@ -663,15 +671,18 @@ avg_par_scores$Antibiotics <- as.factor(avg_par_scores$Antibiotics)
 
 
 print("NULL COVARIATE MODEL")
-PredPlot <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
-PredPlot
-
+message("pred_null.png")
+PredPlotNull <- boxViolinPlot(auc_df = avg_par_scores, covars = "", covars_only=F)
+PredPlotNull
 ggsave("pred_null.png", width=2.5, height=2.5, units="in", dpi=320)
 
 
 pred_df
 metatranscriptomics_pred_score_featuresonly <- tibble::rownames_to_column(pred_df, "External_ID")
 write.table(metatranscriptomics_pred_score_featuresonly, "metatranscriptomics_features_scores.txt", sep="\t", col.names=T, row.names=F, quote=F)
+
+sink()
+stop()
 
 # remove the intercept
 featureplot_df <- mod_coef_df_nocovar[2:nrow(mod_coef_df_nocovar),]
