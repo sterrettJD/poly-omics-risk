@@ -1,5 +1,5 @@
-setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
-
+# setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
+setwd("C:/Users/chris/OneDrive/Documents/poly-omics-risk")
 # setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores")
 list.files()
 
@@ -117,7 +117,7 @@ for(par in unique(counts_df$`Participant ID`)){
     
     
     if(nrow(participant_df)!=4){
-        print("LESS THAN 4 omics")
+        print("FEWER THAN 4 omics")
         nsamples <- sum(participant_df$n)
         nomics <- sum(participant_df$n>0) 
         print(paste0(diagnosis, " sample ", par, " has ", nsamples, " samples over ", nomics, " omics layers" ))
@@ -213,11 +213,11 @@ for(i in 1:50){
 }
 
 plotdf <- data.frame(1:50,plotvecquad,plotvecnonquad)
-colnames(plotdf) <- c("index", "4-omic samples", "3-or-less-omic samples")
+colnames(plotdf) <- c("index", "4-omic samples", "3-or-fewer-omic samples")
 
-plotdf <- plotdf %>% pivot_longer(cols = c("4-omic samples", "3-or-less-omic samples"))
+plotdf <- plotdf %>% pivot_longer(cols = c("4-omic samples", "3-or-fewer-omic samples"))
 
-colors <- c("4-omic samples" = "red", "3-or-less-omic samples" = "blue")
+colors <- c("4-omic samples" = "red", "3-or-fewer-omic samples" = "blue")
 
 
 ggplot(data = plotdf, aes(x = index, y = value, colour = name)) + 
@@ -283,8 +283,8 @@ summary(testing_metadata[!duplicated(testing_metadata$`Participant ID`),diagnosi
 
 
 
-# ONLY RUN THIS IF YOU WANT TO DEAL WITH THE CONSEQUENCES
-testing_metadata %>%
-    write.table("name.txt", sep = "\t", row.names=F, col.names=F, quote=F)
-training_metadata %>%
-    write.table("name.txt", sep = "\t", row.names=F, col.names=F, quote=F)
+# # ONLY RUN THIS IF YOU WANT TO DEAL WITH THE CONSEQUENCES
+# testing_metadata %>%
+#     write.table("name.txt", sep = "\t", row.names=F, col.names=F, quote=F)
+# training_metadata %>%
+#     write.table("name.txt", sep = "\t", row.names=F, col.names=F, quote=F)

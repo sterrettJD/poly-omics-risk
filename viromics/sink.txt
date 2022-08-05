@@ -96,3 +96,62 @@ Warning message:
 Duplicated aesthetics after name standardisation: size 
 Warning message:
 Duplicated aesthetics after name standardisation: size 
+Error in nrow(rr$model) : object 'combomod_only_somecovar' not found
+Warning message:
+In sink() : no sink to remove
+Warning message:
+In sink() : no sink to remove
+Error in nrow(rr$model) : object 'combomod_only_somecovar' not found
+Error in nagelkerke(combomod_only_somecovar, null = NULL, restrictNobs = FALSE) : 
+  object 'combomod_only_somecovar' not found
+Warning messages:
+1: glm.fit: algorithm did not converge 
+2: glm.fit: fitted probabilities numerically 0 or 1 occurred 
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Error in plot_dev(device, filename, dpi = dpi) : 
+  argument "filename" is missing, with no default
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Error in plot_dev(device, filename, dpi = dpi) : 
+  argument "filename" is missing, with no default
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Error in plot_dev(device, filename, dpi = dpi) : 
+  argument "filename" is missing, with no default
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Error in plot_dev(device, filename, dpi = dpi) : 
+  argument "filename" is missing, with no default
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Argument 'df_method' is deprecated. Please use 'ci_method' instead.
+Error in setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation") : 
+  cannot change working directory
+Error in source("~/poly-omics-risk/train_test_split.R", echo = TRUE) : 
+  ~/poly-omics-risk/train_test_split.R:2:9: unexpected symbol
+1: # setwd("/Users/chris/Documents/GRADSCHOOL/PolyOmicsRotation")
+2: setwd(""C
+           ^
