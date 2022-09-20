@@ -1,7 +1,9 @@
-setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/")
-
+# setwd("/Users/johnsterrett/Research-Projects/Team-rotation/poly-omics-scores/")
+setwd("~/OneDrive - UCB-O365/Documents/GRADSCHOOL/PolyOmicsRotation/poly-omics-risk2")
 library(tidyverse)
 library(ggplot2)
+library(data.table)
+library(ggpubr)
 
 mbl <- fread("metabolomics/variable_importance.txt", sep="\t", drop=1)
 mgn <- fread("metagenomics/variable_importance.txt", sep="\t", drop=1)
@@ -99,8 +101,8 @@ vir_plot <- make_plot(vir, feature_text_scaling=8)
 mbl_plot <- make_plot(mbl, feature_text_scaling=8)
 
 p <- ggarrange(mgn_plot, mts_plot, vir_plot, mbl_plot,
-               labels = c("MGN", "MTS", "VIR", "MBL"), align = "h", 
-               label.x = c(0.5, 0.5, 0.5, 0.5) ,
+               labels = c("MGN", "MTS", "VRM", "MBL"), align = "h", 
+               label.x = c(0.5, 0.5, 0.5, 0.5) 
                )
 
 p
