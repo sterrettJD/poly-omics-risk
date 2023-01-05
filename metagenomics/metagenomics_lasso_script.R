@@ -45,6 +45,53 @@ metadata <- fread("hmp2_metadata.csv", header=T, stringsAsFactors=T)
 str(metadata)
 # metadata <- subset(metadata, data_type == "metagenomics")
 
+
+# MAKE THE PLOT FOR THE REVIEWER COMMENT TO ILLUSTRATE TIMELINE OF LONGITUDINAL SAMPLES
+library(ggridges)
+metadata_focused <- subset(metadata, data_type %in% c("metagenomics", "metabolomics", "viromics", "metatranscriptomics"))
+metadata_focused$data_type <- as.factor(metadata_focused$data_type)
+metadata_focused$week_num <- as.numeric(metadata_focused$week_num)
+metadata_focused$diagnosis <- as.character(metadata_focused$diagnosis)
+metadata_focused$diagnosis[metadata_focused$diagnosis == "UC"] <- "IBD"
+metadata_focused$diagnosis[metadata_focused$diagnosis == "CD"] <- "IBD"
+metadata_focused$diagnosis[metadata_focused$diagnosis == "nonIBD"] <- "non-IBD"
+metadata_focused$diagnosis <- as.factor(metadata_focused$diagnosis)
+
+ggplot(metadata_focused, aes(x = week_num, y = data_type)) + geom_density_ridges(scale = 0.9)
+# ggplot(metadata_focused, aes(x = week_num, y = data_type, height = stat(density), fill = data_type)) + 
+#   geom_density_ridges(stat = "binline", bins = 20, scale = 0.95, draw_baseline = FALSE,) +
+#   theme_bw() +
+#   ylab("Data Type") +
+#   xlab("Week Number")
+# ggplot(data = metadata_focused, aes(x = week_num)) + geom_histogram(bins = 30) + 
+#   facet_wrap(~data_type, ncol = 1) + 
+#   theme_classic() +
+#     ylab("Data Type") +
+#     xlab("Week Number")
+# ggsave("omics_longitudinal_histogram.png", width=4.31, height=5.7, units="in", dpi=320, bg='#ffffff')
+ost.names <- c("Metabolomics", "Metagenomics", "Viromics", "Metatranscriptomics")
+names(ost.names) <- c("metabolomics", "metagenomics", "viromics", "metatranscriptomics")
+ggplot(metadata_focused, aes(x = week_num, y = `Participant ID`, fill = diagnosis)) +
+  # geom_density_ridges(stat = "binline",
+  #   jittered_points = TRUE,
+  #   position = position_points_jitter(width = 0.05, height = 0),
+  #   point_shape = '|', point_size = 3, point_alpha = 1, alpha = 0.7,
+  # ) +
+  geom_tile() +
+  theme_classic() +
+  ylab("Study Participant") +
+  xlab("Week Number") +
+  facet_wrap(~data_type, ncol = 4, nrow = 1, labeller = labeller(data_type = ost.names)) +
+  scale_fill_manual(values = c("red", "blue"), name="") +
+  # theme(axis.text.y = element_text(size = 3)) +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() 
+  ) +
+  theme(legend.position="bottom")
+ggsave("sample_longitudinal_ridge_plot.png", width=8, height=6, units="in", dpi=320, bg='#ffffff')
+
+
+
 # make barplt by data type
 par(mar = c(9, 4, 2, 2) + 1)
 barplot(summary(metadata$data_type),las=2)
@@ -219,7 +266,7 @@ namesiessep <- namesies %>% separate(namesies,into=c("namesies","junk"),convert=
 colnames(clr_num_grouped_df_3) <- namesiessep$namesies
 
 intersecty <- intersect(c(as.character(namesiessep$namesies)), 
-                c(as.character(metadata1$`External ID`))
+                        c(as.character(metadata1$`External ID`))
 )
 
 dim(namesiessep)
@@ -262,7 +309,7 @@ hist(as.numeric(mergey_colsd))
 toKeep <- c(intersect(c(names(mergeytest_colsd)[which(mergeytest_colsd > 1)]), c(names(mergey_colsd)[which(mergey_colsd > 1)])),
             c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "race", "Antibiotics")
             # c("External ID", "Participant ID", "site_name", "diagnosis", "consent_age", "sex", "Antibiotics")
-            )
+)
 length(toKeep)
 length(mergey_colsd)
 mergeytest <- mergeytest[,which(names(mergeytest) %in% toKeep)]
@@ -358,8 +405,8 @@ varlist2 <- names(df_bestglm)[which(names(df_bestglm) %ni% c("diagnosis", "Parti
 varstring2 <- paste0(varlist2, collapse = " + ", sep = "")
 
 mymod <- lme4::glmer(as.formula(paste0("diagnosis ~ ",varstring2, " + (1|Participant_ID) + (1|site_name)")), 
-             data = df_bestglm, 
-             family = binomial)
+                     data = df_bestglm, 
+                     family = binomial)
 (mymodsum <- summary(mymod))
 # prediction on reserved validation samples
 # filter prediction dataframe to only complete cases
@@ -755,8 +802,8 @@ predictionDF <- predictionDF[-1,]
 # predictionDF$diagnosis <- as.factor(predictionDF$diagnosis)
 postPred_RF <- as.data.frame(scale(predict(myMixRF$forest, newdata = predictionDF[,1:10])))
 postPred_RF <- as.data.frame(scale(predict.train(object = myMixRF$forest, newdata = predictionDF[,1:10], 
-                                                  testX = predictionDF[,which(names(predictionDF) != "diagnosis")],
-                                                  testY = predictionDF$diagnosis)))
+                                                 testX = predictionDF[,which(names(predictionDF) != "diagnosis")],
+                                                 testY = predictionDF$diagnosis)))
 
 # postPred_RF <- as.data.frame(predict(myglm, newdata = mergeytest)); postPred_RF <- ifelse(postPred_RF[,1] > 0.25, "1", "0")
 
