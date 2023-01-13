@@ -28,9 +28,22 @@ mgn.func.important <- mgn.func %>% as.data.frame() %>%
 rownames(mgn.func.important) <- mgn.func.important$`Feature\\Sample`
 mgn.func.important$`Feature\\Sample` <- NULL
 
-rownames(mgn.func.important)[1:10]
 mgn.func.important <- mgn.func.important %>% 
     mutate_all(as.numeric)
-rownames(mgn.func.important)[1:3]
+
+# filter out ECs that are very low abundance
 mgn.func.important <- mgn.func.important[rowMeans(mgn.func.important) >= 0.001,]
 
+# export the ecs
+ecs <- rownames(mgn.func.important)
+ecs.only <- lapply(ecs, 
+                    FUN=function(x) str_split(x, pattern=":")[[1]][1])
+unique.ecs <- unique(ecs.only)
+
+fwrite(unique.ecs, file="selected_taxa_ECs.txt", sep="\t")
+
+
+mbl <- fread("metabolomics/variable_importance.txt", sep="\t", drop=1)
+metabolites <- mbl$variable
+
+fwrite(as.list(metabolites), file="selected_metabolites.txt", sep="\t")
