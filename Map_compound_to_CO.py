@@ -61,12 +61,12 @@ def main():
             match_row = find_matching_compound(compound, info)
 
             if any(match_row["Perfect Match"] == True):
-                COs.append(match_row["CO"].apply(lambda x: x.split(":")[1]))
+                COs = COs + [x.split(":")[1] for x in match_row["CO"].to_list()]
 
             elif any(match_row["Imperfect Match"] == True):
                 imperfect_COs.append((compound,
-                                      match_row["CO"],
-                                      match_row["Names"]))
+                                      match_row["CO"].to_list(),
+                                      match_row["Names"].to_list()))
 
             else:
                 unknown_COs.append(compound)
@@ -75,7 +75,18 @@ def main():
             unknown_COs.append(compound)
             print(f"No info found for {compound}")
 
+    print("The accepted COs are as follows: ", COs)
+    with open("selected_COs_draft.txt", "w") as f:
+        for CO in COs:
+            f.write(CO)
+            f.write("\t")
 
+    print("Accepted COs have been written to selected_COs_draft.txt")
+
+    print("The following compounds had imperfect matches: ", imperfect_COs)
+    print("Please select the COs you would like to use, and manually add them to the file.")
+
+    print("Information could not be found for the following compounds. Please manually curate COs", unknown_COs)
 
 if __name__=="__main__":
     main()
