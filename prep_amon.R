@@ -49,13 +49,6 @@ metabolites <- mbl$variable
 fwrite(as.list(metabolites), file="selected_metabolites.txt", sep="\t")
 
 
-# After running this, use Map_EC_to_KO.py to map these ECs to KOs for AMON
-# would've done that in this script, but it's easier (to me) to access the KEGG API
-# via Python
-# Then run AMON using:
-# amon.py -i selected_taxa_KOs.txt -o amon_out --detected_compounds selected_metabolites.txt
-
-
 # This bit is to get a list of all ECs and metabolites to run a sanity check with AMON
 all.ec.names <- rownames(mgn.func)[grepl(x=rownames(mgn.func), pattern=":")]
 
@@ -65,8 +58,16 @@ all.unique.ecs <- sapply(all.ec.names,
 
 fwrite(as.list(all.unique.ecs), "all_detected_ecs.txt", sep="\t")
 
+non.selected.ecs <- setdiff(all.unique.ecs, unique.ecs)
+fwrite(as.list(non.selected.ecs), "nonselected_ecs.txt", sep="\t")
 
 all.mbl <- fread("metabolomics/HMP2_metabolomics.csv")
 
 all.unique.mbls <- unique(all.mbl$Metabolite)
 fwrite(as.list(all.unique.mbls), "all_unique_annotated_mbls.txt", sep="\t")
+
+# After running this, use Map_EC_to_KO.py to map these ECs to KOs for AMON
+# would've done that in this script, but it's easier (to me) to access the KEGG API
+# via Python
+# Then run AMON using:
+# amon.py -i selected_taxa_KOs.txt -o amon_out --detected_compounds selected_metabolites.txt
