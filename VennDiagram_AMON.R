@@ -54,3 +54,21 @@ draw.pairwise.venn(area1=prod.selected, area2=prod.all, cross.area=prod.both,
 
 selected.v.all
 
+grid.newpage()
+all.origins <- merge(all.v.human, selected.v.all, by="V1",all=T)
+all.origins[is.na(all.origins)] <- F
+
+prod.host <- sum(all.origins$human)
+prod.all <- sum(all.origins$all_taxa.x)
+prod.selected <- sum(all.origins$selected_taxa)
+overlap.host.all <- sum(all.origins$human & all.origins$all_taxa.x)
+overlap.host.selected <- sum(all.origins$human & all.origins$selected_taxa)
+overlap.all.selected <- sum(all.origins$all_taxa.x & all.origins$selected_taxa)
+overlap <- sum(all.origins$all_taxa.x & all.origins$selected_taxa & all.origins$human)
+
+draw.triple.venn(prod.host, prod.all, prod.selected, 
+                 n12 = overlap.host.all, n13 = overlap.host.selected,
+                 n23 = overlap.all.selected,
+                 n123 = overlap,
+                 category = c("Human", "All taxa", "Selected taxa"),fill = c("blue", "yellow", "red"))
+
