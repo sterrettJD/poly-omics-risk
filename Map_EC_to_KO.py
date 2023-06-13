@@ -13,8 +13,8 @@ def get_mapper():
 
 def map_ecs_to_ko(ecs, mapper):
     return [mapper[ec] if ec in mapper.keys() else None for ec in ecs]
-
-if __name__=="__main__":
+    
+def main():
     mapper = get_mapper()
     with open("selected_taxa_ECs.txt") as f:
         ec_list = f.read().split()
@@ -48,4 +48,25 @@ if __name__=="__main__":
 
     with open(r'all_detected_KOs.txt', 'w') as fp:
         fp.write('\t'.join(mapped_only))
+        
     
+    # for ECs from non-selected taxa
+    with open("nonselected_ecs.txt") as f:
+        ec_list = f.read().split()
+        
+    ec_list = [f"ec:{ec}" for ec in ec_list]
+    mapped = map_ecs_to_ko(ec_list, mapper)
+
+    unmapped = sum([m is None for m in mapped])/len(mapped) * 100
+    print(f"Percent unmapped ECs: {round(unmapped,2)}")
+    
+    # get rid of None and trim "ko:" from the start of each
+    mapped_only = [m[3:] for m in mapped if m is not None]
+    print(mapped_only)
+
+    
+    with open(r'nonselected_KOs.txt', 'w') as fp:
+        fp.write('\t'.join(mapped_only))
+    
+if __name__=="__main__":
+    main()
