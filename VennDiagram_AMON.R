@@ -2,6 +2,7 @@ library(tidyverse)
 library(data.table)
 library(VennDiagram)
 library(plotrix)
+library(KEGGREST)
 
 all.v.human <- fread("amon_out_all_v_human/origin_table.tsv") %>% 
     filter(detected==T)
@@ -66,9 +67,50 @@ overlap.host.selected <- sum(all.origins$human & all.origins$selected_taxa)
 overlap.all.selected <- sum(all.origins$all_taxa.x & all.origins$selected_taxa)
 overlap <- sum(all.origins$all_taxa.x & all.origins$selected_taxa & all.origins$human)
 
-draw.triple.venn(prod.host, prod.all, prod.selected, 
+p <- draw.triple.venn(prod.host, prod.all, prod.selected, 
                  n12 = overlap.host.all, n13 = overlap.host.selected,
                  n23 = overlap.all.selected,
                  n123 = overlap,
                  category = c("Human", "All taxa", "Selected taxa"),fill = c("blue", "yellow", "red"))
 
+p
+ggsave("Figures/AMON_triple_venn.png", p)
+ggsave("Figures/AMON_triple_venn.pdf", p)
+
+grid.newpage()
+nonsel.v.human <- fread("amon_out_nonselected_v_human/origin_table.tsv") %>% 
+    filter(detected==T)
+all.origins <- merge(all.origins, nonsel.v.human, by="V1",all=T) 
+nonsel.v.sel <- fread("amon_out_nonselected_v_selected/origin_table.tsv") %>% 
+    filter(detected==T)
+all.origins <- merge(all.origins, nonsel.v.sel, by="V1",all=T) 
+all.origins[is.na(all.origins)] <- F
+
+prod.nonsel <- sum(all.origins$nonselected_taxa.x)
+overlap.host.nonsel <- sum(all.origins$human.x & all.origins$nonselected_taxa.x)
+overlap.host.selected <- sum(all.origins$human.x & all.origins$selected_taxa.x)
+overlap.nonsel.selected <- sum(all.origins$nonselected_taxa.x & all.origins$selected_taxa.x)
+overlap <- sum(all.origins$nonselected_taxa.x & all.origins$selected_taxa.x & all.origins$human.x)
+
+p <- draw.triple.venn(prod.host, prod.nonsel, prod.selected, 
+                      n12 = overlap.host.nonsel, n13 = overlap.host.selected,
+                      n23 = overlap.nonsel.selected,
+                      n123 = overlap,
+                      category = c("Human", "Non-selected taxa", "LASSO-selected taxa"),
+                      fill = c("blue", "yellow", "red"))
+
+p
+ggsave("Figures/AMON_host_nonsel_sel_Venn.png", p)
+ggsave("Figures/AMON_host_nonsel_sel_Venn.pdf", p)
+
+keggFind("compound", "C05627")
+all.origins$KEGGname <- sapply(all.origins$V1, 
+                               FUN=function(x) keggFind("compound", x))
+
+all.origins %>% 
+    select(c(V1, 
+             nonselected_taxa.x,
+             selected_taxa.x,
+             human.x,
+             KEGGname)) %>%
+    fwrite("AMON_dected_compounds.tsv", sep="\t")
