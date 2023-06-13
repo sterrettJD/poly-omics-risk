@@ -1,0 +1,24 @@
+1. run prep_AMON.R to extract the enzyme commission identifiers from our LASSO-selected taxa and from all taxa
+
+2. run Map_EC_to_KO.py to map those enzyme commission identifiers to KEGG KOs for AMON
+
+3. run Map_compound_to_CO.py to map selected metabolites to KEGG COs (outputs selected_COs_draft.txt)
+
+4. Manually curate remaining COs (selected_COs.txt)
+
+5. Get list of KOs in human genome
+    - extract_ko_genome_from_organism.py -i hsa -o human_kos.txt
+
+6. Run AMON
+    a. For just selected taxa KOs
+    - amon.py -i selected_taxa_KOs.txt -o amon_out --detected_compounds selected_COs.txt
+    b. To compare selected taxa KOs with all taxa KOs
+    - amon.py -i selected_taxa_KOs.txt --other_gene_set all_detected_KOs.txt --gene_set_name selected_taxa --other_gene_set_name all_taxa -o amon_out_selected_v_all --detected_compounds selected_COs.txt
+    c. To compare selected taxa KOs with human KOs
+    - amon.py -i selected_taxa_KOs.txt --other_gene_set human_kos.txt --gene_set_name selected_taxa --other_gene_set_name human -o amon_out_selected_v_human --detected_compounds selected_COs.txt
+    d. To compare all taxa KOs with human KOs
+    - amon.py -i all_detected_KOs.txt --other_gene_set human_kos.txt --gene_set_name all_taxa --other_gene_set_name human -o amon_out_all_v_human --detected_compounds selected_COs.txt
+    e. To compare nonselected taxa KOs with human KOs
+    - amon.py -i nonselected_KOs.txt --other_gene_set human_kos.txt --gene_set_name nonselected_taxa --other_gene_set_name human -o amon_out_nonselected_v_human --detected_compounds selected_COs.txt
+    f. To compare all taxa KOs with human KOs
+    - amon.py -i nonselected_KOs.txt --other_gene_set selected_taxa_KOs.txt --gene_set_name nonselected_taxa --other_gene_set_name selected_taxa -o amon_out_nonselected_v_selected --detected_compounds selected_COs.txt
