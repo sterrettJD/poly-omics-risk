@@ -9,7 +9,7 @@ This repository supports the following publication:
 
 >Poly-omic risk scores predict inflammatory bowel disease diagnosis. CH Arehart,\* JD Sterrett,\* RL Garris, RE Quispe-Pilco, CR Gignoux, LM Evans,\^ MA Stanislawski.\^ *mSystems* in press (2023). doi: 10.1128/msystems.00677-23.
 
-*: join first authors    
+*: joint first authors    
 ^: joint senior authors
 
 ## Repository Contents
