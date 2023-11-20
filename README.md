@@ -3,7 +3,7 @@
 ## Project Description
 Integrating multi-omics data to a polygenic risk score framework to model inflammatory bowel disease.
 
-What started as an [Interdisciplinary Quantitative Biology](https://www.colorado.edu/certificate/iqbiology/) team rotation project in Spring 2022 has spiraled into a larger project and conversation around multi-omics modeling. 
+What started as an [Interdisciplinary Quantitative Biology](https://www.colorado.edu/certificate/iqbiology/) team rotation project in Spring 2022 developed into a larger multi-omics modeling study. 
 
 This repository supports the following publication:
 
