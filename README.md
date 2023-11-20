@@ -7,10 +7,10 @@ What started as an [Interdisciplinary Quantitative Biology](https://www.colorado
 
 This repository supports the following publication:
 
->Poly-omic risk scores predict inflammatory bowel disease diagnosis. CH Arehart,$^*$ JD Sterrett,$^*$ RL Garris, RE Quispe-Pilco, CR Gignoux, LM Evans,$^\#$ MA Stanislawski.$^\#$ *mSystems* in press (2023). doi: 10.1128/msystems.00677-23.
+>Poly-omic risk scores predict inflammatory bowel disease diagnosis. CH Arehart,\* JD Sterrett,\* RL Garris, RE Quispe-Pilco, CR Gignoux, LM Evans,\^ MA Stanislawski.\^ *mSystems* in press (2023). doi: 10.1128/msystems.00677-23.
 
-$^*$: join first authors    
-$^\#$: joint senior authors
+*: join first authors    
+^: joint senior authors
 
 ## Repository Contents
 This repository contains directories for each -omics data type, with a script in each for quality control, transformation, feature selection, model evaluation, and assessing variable importance.
